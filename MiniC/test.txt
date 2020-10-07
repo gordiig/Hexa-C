@@ -1,0 +1,24 @@
+// Wow, super code
+
+void sort(int a[]) {
+    int i;
+    int j;
+    int tmp;
+    
+    for (i = 0; i < 2; i += 1) {
+        for (j = i; j < 3; j += 1) {
+            if (a[i] > a[j]) {
+                tmp = a[i];
+                a[i] = a[j];
+                a[j] = tmp;
+            }
+        }
+    }
+}
+
+int main(void) {
+    int a[] = {2, 3, 1};
+    
+    sort(a);
+}
+
