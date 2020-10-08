@@ -1,3 +1,4 @@
+using MiniC.Generators;
 using MiniC.Operations.Operands;
 using MiniC.Operations.Operands.Instructions.ArithmeticInstructions;
 
@@ -13,6 +14,12 @@ namespace MiniC.Operations.ConcreteOperations
         public ArithmeticOperation(IOperand lhs, ArithmeticInstruction rhs)
         {
             this.lhs = lhs;
+            this.rhs = rhs;
+        }
+        
+        public ArithmeticOperation(Register lhs, ArithmeticInstruction rhs)
+        {
+            this.lhs = new RegisterOperand(lhs);
             this.rhs = rhs;
         }
 

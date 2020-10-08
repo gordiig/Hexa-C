@@ -39,7 +39,7 @@ func_main_start:
 	r0 = add(SP, #4);
 	r2 = memw(r0);
 	// Doing additive operator
-	r0 = add(r2, r1);
+	r0 = sub(r2, r1);
 	// Getting variable "z" for lvalue
 	r1 = add(SP, #0);
 	r2 = memw(r1);

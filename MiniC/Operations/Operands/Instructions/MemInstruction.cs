@@ -1,3 +1,4 @@
+using MiniC.Generators;
 using MiniC.Operations.Operands.ConstOperands;
 using MiniC.Scopes;
 
@@ -22,6 +23,12 @@ namespace MiniC.Operations.Operands.Instructions
         {
             this.address = address;
             this.offset = offset;
+        }
+        
+        public MemInstruction(Register address, string offset = "")
+        {
+            this.address = new RegisterOperand(address);
+            this.offset = offset == "" ? null : new IntConstOperand(offset);
         }
 
         #endregion

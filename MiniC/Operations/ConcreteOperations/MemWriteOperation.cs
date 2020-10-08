@@ -23,6 +23,12 @@ namespace MiniC.Operations.ConcreteOperations
             this.lhs = lhs;
             this.rhs = rhs;
         }
+        
+        public MemWriteOperation(MemInstruction lhs, int rhs)
+        {
+            this.lhs = lhs;
+            this.rhs = new IntConstOperand(rhs);
+        }
 
         public MemWriteOperation(MemInstruction lhs, Register register)
         {

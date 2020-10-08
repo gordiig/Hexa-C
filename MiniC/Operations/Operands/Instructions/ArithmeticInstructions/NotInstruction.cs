@@ -1,4 +1,5 @@
 using MiniC.Exceptions;
+using MiniC.Generators;
 
 namespace MiniC.Operations.Operands.Instructions.ArithmeticInstructions
 {
@@ -7,8 +8,11 @@ namespace MiniC.Operations.Operands.Instructions.ArithmeticInstructions
         public NotInstruction(RegisterOperand firstOperand, IOperand secondOperand = null) : 
             base(firstOperand, secondOperand)
         {
-            if (FirstOperand.OperandType == OperandType.Constant_f)
-                throw new CodeGenerationException("Can't do bitwise operation on float");
+        }
+        
+        public NotInstruction(Register firstOperand, IOperand secondOperand = null) : 
+            base(new RegisterOperand(firstOperand), secondOperand)
+        {
         }
 
         public override string InstructionString => "not";

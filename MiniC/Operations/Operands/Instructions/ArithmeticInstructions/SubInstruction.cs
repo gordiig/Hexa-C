@@ -1,3 +1,4 @@
+using MiniC.Generators;
 using MiniC.Scopes;
 
 namespace MiniC.Operations.Operands.Instructions.ArithmeticInstructions
@@ -6,6 +7,16 @@ namespace MiniC.Operations.Operands.Instructions.ArithmeticInstructions
     {
         public SubInstruction(RegisterOperand firstOperand, IOperand secondOperand = null) :
             base(firstOperand, secondOperand)
+        {
+        }
+        
+        public SubInstruction(Register firstOperand, IOperand secondOperand = null) :
+            base(new RegisterOperand(firstOperand), secondOperand)
+        {
+        }
+        
+        public SubInstruction(Register firstOperand, Register secondOperand = null) :
+            base(new RegisterOperand(firstOperand), new RegisterOperand(secondOperand))
         {
         }
 

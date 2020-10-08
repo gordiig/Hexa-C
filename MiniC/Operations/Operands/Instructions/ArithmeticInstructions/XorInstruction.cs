@@ -1,4 +1,4 @@
-using MiniC.Exceptions;
+using MiniC.Generators;
 
 namespace MiniC.Operations.Operands.Instructions.ArithmeticInstructions
 {
@@ -7,8 +7,11 @@ namespace MiniC.Operations.Operands.Instructions.ArithmeticInstructions
         public XorInstruction(RegisterOperand firstOperand, RegisterOperand secondOperand = null) :
             base(firstOperand, secondOperand)
         {
-            if (FirstOperand.OperandType == OperandType.Constant_f || SecondOperand.OperandType == OperandType.Constant_f)
-                throw new CodeGenerationException("Can't do bitwise operation on float");
+        }
+        
+        public XorInstruction(Register firstOperand, Register secondOperand = null) :
+            base(new RegisterOperand(firstOperand), new RegisterOperand(secondOperand))
+        {
         }
         
         public RegisterOperand SecondOperandAsRegisterOperand => secondOperand as RegisterOperand;
