@@ -13,6 +13,11 @@ namespace MiniC.Operations.Operands.ConstOperands
         {
             _constant = constant;
         }
+        
+        public FloatConstOperand(string constant)
+        {
+            _constant = float.Parse(constant);
+        }
 
         public override OperandType OperandType => OperandType.Constant_f;
 

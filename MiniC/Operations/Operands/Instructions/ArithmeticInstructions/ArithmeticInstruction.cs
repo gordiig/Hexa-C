@@ -19,15 +19,6 @@ namespace MiniC.Operations.Operands.Instructions.ArithmeticInstructions
 
         public ArithmeticInstruction(RegisterOperand firstOperand, IOperand secondOperand = null)
         {
-            // if (firstOperand.OperandType != OperandType.Constant_i && firstOperand.OperandType != OperandType.Constant_f  
-            //                                                        && firstOperand.OperandType != OperandType.Register)
-            //     throw new CodeGenerationException("First operand of AluInstruction must be either " +
-            //                                       "constant or register");
-            // if (secondOperand != null && 
-            //     (firstOperand.OperandType != OperandType.Constant_i && firstOperand.OperandType != OperandType.Constant_f
-            //                                                         && secondOperand.OperandType != OperandType.Register))
-            //     throw new CodeGenerationException("Second operand of AluInstruction must be either " +
-            //                                       "null, constant or register");
             this.firstOperand = firstOperand;
             this.secondOperand = secondOperand;
         }

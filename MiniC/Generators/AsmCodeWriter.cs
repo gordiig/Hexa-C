@@ -13,6 +13,7 @@ using MiniC.Operations.Operands.ConstOperands;
 using MiniC.Operations.Operands.Instructions;
 using MiniC.Operations.Operands.Instructions.AllocInstructions;
 using MiniC.Operations.Operands.Instructions.ArithmeticInstructions;
+using MiniC.Operations.Operands.Instructions.CompareInstructions;
 using MiniC.Operations.Operands.Instructions.ConvertInstructions;
 using MiniC.Scopes;
 
@@ -808,31 +809,24 @@ namespace MiniC.Generators
         #endregion
         
         #region Adding compares
-        // TODO
         public void AddCompareRegisterEqRegister(Register pRegister, Register r1, Register r2, bool negate = false)
         {
             var type = SymbolType.GetBigger(r1.Type, r2.Type);
-            if (type.Name == "float")
+            var eqInstruction = new EqInstruction(r1, r2, negate);
+            var op = new CompareOperation(pRegister, eqInstruction);
+            addOperation(op);
+            if (type.Name == "float" && negate) 
             {
-                if (negate) 
-                    throw new NotImplementedException("Negate for float!");
-                _code += $"\n\t{pRegister} = sfcmp.eq({r1}, {r2});";
-            }
-            else
-            {
-                var negateSym = negate ? "!" : "";
-                _code += $"\n\t{pRegister} = {negateSym}cmp.eq({r1}, {r2});";   
+                AddComment("Can't do !sfcmp.eq, so inverting resulting pregister");
+                AddNotRegister(pRegister, pRegister);
             }
         }
-
-        // TODO
+        
         public void AddCompareRegisterEqNumber(Register pRegister, Register register, string value, bool negate = false)
         {
             var type = register.Type;
             if (type.Name == "float")
             {
-                if (negate)
-                    throw new NotImplementedException("Negate for float!");
                 var flRegister = GetFreeRegister();
                 AddValueToRegisterAssign(flRegister, value, type);
                 AddCompareRegisterEqRegister(pRegister, register, flRegister, negate);
@@ -840,43 +834,41 @@ namespace MiniC.Generators
             }
             else
             {
-                var negateSym = negate ? "!" : "";
-                _code += $"\n\t{pRegister} = {negateSym}cmp.eq({register}, #{value});";   
+                var valueOperand = new IntConstOperand(value);
+                var eqInstr = new EqInstruction(register, valueOperand, negate);
+                var op = new CompareOperation(pRegister, eqInstr);
+                addOperation(op);
             }
         }
-
-        // TODO
+        
         public void AddCompareRegisterGeRegister(Register pRegister, Register r1, Register r2)
         {
-            var type = SymbolType.GetBigger(r1.Type, r2.Type);
-            var sfPrefix = type.Name == "float" ? "sf" : "";
-            _code += $"\n\t{pRegister} = {sfPrefix}cmp.ge({r1}, {r2});";
+            var compareInstruction = new GeInstruction(r1, r2);
+            var op = new CompareOperation(pRegister, compareInstruction);
+            addOperation(op);
         }
         
-        // TODO
         public void AddCompareRegisterGtRegister(Register pRegister, Register r1, Register r2)
         {
-            var type = SymbolType.GetBigger(r1.Type, r2.Type);
-            var sfPrefix = type.Name == "float" ? "sf" : "";
-            _code += $"\n\t{pRegister} = {sfPrefix}cmp.gt({r1}, {r2});";
+            var compareInstruction = new GtInstruction(r1, r2);
+            var op = new CompareOperation(pRegister, compareInstruction);
+            addOperation(op);
         }
         
-        // TODO
         public void AddCompareRegisterLeRegister(Register pRegister, Register r1, Register r2)
         {
             // LE делается через GE простым свапом параметров
-            var type = SymbolType.GetBigger(r1.Type, r2.Type);
-            var sfPrefix = type.Name == "float" ? "sf" : "";
-            _code += $"\n\t{pRegister} = {sfPrefix}cmp.ge({r2}, {r1});";
+            var compareInstruction = new LeInstruction(r1, r2);
+            var op = new CompareOperation(pRegister, compareInstruction);
+            addOperation(op);
         }
         
-        // TODO
         public void AddCompareRegisterLtRegister(Register pRegister, Register r1, Register r2)
         {
             // LT делается через GT простым свапом параметров
-            var type = SymbolType.GetBigger(r1.Type, r2.Type);
-            var sfPrefix = type.Name == "float" ? "sf" : "";
-            _code += $"\n\t{pRegister} = {sfPrefix}cmp.gt({r2}, {r1});";
+            var compareInstruction = new LtInstruction(r1, r2);
+            var op = new CompareOperation(pRegister, compareInstruction);
+            addOperation(op);
         }
         
         #endregion
