@@ -10,7 +10,7 @@ namespace MiniC.Operations.Operands.ConstOperands
         
         #region Interface impl
 
-        public OperandType OperandType => OperandType.Constant;
+        public virtual OperandType OperandType => OperandType.Constant_i;
 
         public string AsmString => $"#{IntRepr}";
 

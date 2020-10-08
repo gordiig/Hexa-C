@@ -7,5 +7,7 @@ namespace MiniC.Operations
         LD,
         ST,
         XTYPE,
+        Assign,
+        NonOp,
     }
 }

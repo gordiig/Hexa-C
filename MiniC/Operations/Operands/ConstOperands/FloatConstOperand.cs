@@ -14,6 +14,8 @@ namespace MiniC.Operations.Operands.ConstOperands
             _constant = constant;
         }
 
+        public override OperandType OperandType => OperandType.Constant_f;
+
         public override int IntRepr
         {
             get

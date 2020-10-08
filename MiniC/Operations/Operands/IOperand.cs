@@ -6,5 +6,7 @@ namespace MiniC.Operations.Operands
         /// Тип операнда
         /// </summary>
         OperandType OperandType { get; }
+
+        string ToString() => AsmString;
     }
 }

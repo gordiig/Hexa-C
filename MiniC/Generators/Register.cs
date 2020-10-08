@@ -23,5 +23,13 @@ namespace MiniC.Generators
             var register = new Register("SP");
             return register;
         }
+
+        public Register Copy()
+        {
+            var ans = new Register(Name);
+            ans.IsFree = IsFree;
+            ans.Type = SymbolType.GetType(Type.Name);
+            return ans;
+        }
     }
 }

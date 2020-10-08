@@ -3,9 +3,11 @@ namespace MiniC.Operations.Operands
     public enum OperandType
     {
         Register,
-        Memory,
+        Memory_i,
+        Memory_b,
         Instruction,
-        Constant,
+        Constant_i,
+        Constant_f,
         Label,
     }
 }

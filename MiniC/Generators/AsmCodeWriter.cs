@@ -1,11 +1,19 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using MiniC.Exceptions;
+using MiniC.Operations;
+using MiniC.Operations.ConcreteOperations;
+using MiniC.Operations.Operands;
+using MiniC.Operations.Operands.ConstOperands;
+using MiniC.Operations.Operands.Instructions;
+using MiniC.Operations.Operands.Instructions.AllocInstructions;
+using MiniC.Operations.Operands.Instructions.ArithmeticInstructions;
+using MiniC.Operations.Operands.Instructions.ConvertInstructions;
 using MiniC.Scopes;
 
 namespace MiniC.Generators
@@ -14,6 +22,8 @@ namespace MiniC.Generators
     {
         private string _variables = "";
         private string _code = "";
+
+        private ArrayList _operations = new ArrayList();
         
         public string Code { get => _code; }
         public string Variables { get => _variables; }
@@ -162,7 +172,11 @@ namespace MiniC.Generators
             using (var writer = new StreamWriter(File.Open(filename, FileMode.Create)))
             {
                 writer.AutoFlush = true;
-                writer.Write(AllCode);
+                // writer.Write(AllCode);
+                foreach (IOperation operation in _operations)
+                {
+                    writer.WriteLine(operation.AsmString);
+                }
             }
         }
 
@@ -260,19 +274,23 @@ namespace MiniC.Generators
                     // Добавляем указатель на нулевой элемент (костыли ура вот указатели не делали теперь хлебаем)
                     var pointerRegister = GetFreeRegister();
                     AddAddingValueToRegister(pointerRegister, Register.SP(), currentOffset + 4);
-                    _code += $"\n\tmemw(SP + #{currentOffset}) = {pointerRegister};";
+                    // _code += $"\n\tmemw(SP + #{currentOffset}) = {pointerRegister};";
+                    AddRegisterToMemWriting(Register.SP(), pointerRegister, 
+                        currentOffset.ToString());
                     FreeRegister(pointerRegister);
                     currentOffset += 4;
                     for (int i = 0; i < symbol.ArraySize; i++)
                     {
-                        _code += $"\n\t{memFunc}(SP + #{currentOffset}) = #0;";
+                        // _code += $"\n\t{memFunc}(SP + #{currentOffset}) = #0;";
+                        AddValueToMemWriting(Register.SP(), 0, currentOffset.ToString());
                         currentOffset += symbol.Type.Size;
                     }   
                 }
                 // Если одно значение
                 else
                 {
-                    _code += $"\n\t{memFunc}(SP + #{currentOffset}) = #0;";
+                    // _code += $"\n\t{memFunc}(SP + #{currentOffset}) = #0;";
+                    AddValueToMemWriting(Register.SP(), 0, currentOffset.ToString());
                     currentOffset += symbol.Type.Size;
                 }
             }
@@ -286,7 +304,9 @@ namespace MiniC.Generators
                     // Добавляем указатель на нулевой элемент (костыли ура вот указатели не делали теперь хлебаем)
                     var pointerRegister = GetFreeRegister();
                     AddAddingValueToRegister(pointerRegister, Register.SP(), currentOffset + 4);
-                    _code += $"\n\tmemw(SP + #{currentOffset}) = {pointerRegister};";
+                    // _code += $"\n\tmemw(SP + #{currentOffset}) = {pointerRegister};";
+                    AddRegisterToMemWriting(Register.SP(), pointerRegister, 
+                        currentOffset.ToString());
                     FreeRegister(pointerRegister);
                     currentOffset += 4;
                     for (int i = 0; i < symbol.ArraySize; i++)
@@ -319,15 +339,19 @@ namespace MiniC.Generators
         public void AddFunctionStart(string name)
         {
             var label = $"func_{name}_start";
-            _code += $"\n{label}:";
+            // _code += $"\n{label}:";
+            AddLabel(label);
             PushFunc(name);
         }
 
         public void AddFunctionEnd(string name)
         {
             var label = $"func_{name}_end";
-            _code += $"\n{label}:";
-            _code += $"\n\tdealloc_return;\n";
+            // _code += $"\n{label}:";
+            // _code += $"\n\tdealloc_return;\n";
+            AddLabel(label);
+            var op = new DeallocOperation(new DeallocReturnInstruction());
+            _operations.Add(op);
             PopFunc();
         }
 
@@ -348,7 +372,19 @@ namespace MiniC.Generators
 
         public void AddAllocateStackFrame4000()
         {
-            _code += "\n\tallocframe(#4000)";
+            // _code += "\n\tallocframe(#4000)";
+            var op = new AllocOperation(4000);
+            _operations.Add(op);
+        }
+
+        #endregion
+
+        #region Adding basic labels
+
+        public void AddLabel(string label)
+        {
+            var op = new LabelOperation(label);
+            _operations.Add(op);
         }
 
         #endregion
@@ -357,14 +393,14 @@ namespace MiniC.Generators
         public void AddLoopStart(string name)
         {
             var label = $"loop_{name}_start";
-            _code += $"\n{label}:";
+            AddLabel(label);
             LoopStack.Push(name);
         }
 
         public void AddLoopEnd(string name)
         {
             var label = $"loop_{name}_end";
-            _code += $"\n{label}:";
+            AddLabel(label);
             LoopStack.Pop();
         }
 
@@ -398,21 +434,21 @@ namespace MiniC.Generators
         public void AddIfStart(string name)
         {
             var label = $"if_{name}_start";
-            _code += $"\n{label}:";
+            AddLabel(label);
             IfStack.Push(name);
         }
 
         public void AddIfEnd(string name)
         {
             var label = $"if_{name}_end";
-            _code += $"\n{label}:";
+            AddLabel(label);
             IfStack.Pop();
         }
 
         public void AddIfElse(string ifName)
         {
             var label = $"if_{ifName}_else";
-            _code += $"\n{label}:";
+            AddLabel(label);
         }
 
         public void AddJumpToElse(string ifName)
@@ -420,7 +456,7 @@ namespace MiniC.Generators
             var label = $"if_{ifName}_else";
             AddJump(label);
         }
-
+        
         public void AddConditionalJumpToElse(string ifName, Register pRegister, bool negate = false)
         {
             var label = $"if_{ifName}_else";
@@ -432,7 +468,7 @@ namespace MiniC.Generators
             var label = $"if_{ifName}_end";
             AddJump(label);
         }
-
+        
         public void AddConditionalJumpToIfEnd(string ifName, Register pRegister, bool negate = false)
         {
             var label = $"if_{ifName}_end";
@@ -446,28 +482,38 @@ namespace MiniC.Generators
         public void AddRegisterToVariableWriting(VarSymbol variable, Register register)
         {
             var memRegister = GetFreeRegister();
-            var memFunc = variable.Type.MemFunc;
-            if (memFunc.Length == 0)
-                memFunc = SymbolType.GetType("int").MemFunc;
-            if (variable.IsGlobal)
-                _code += $"\n\t{memRegister} = ##{variable.BaseAddress};";
-            else
-                _code += $"\n\t{memRegister} = add(SP, #{variable.BaseAddress})";
-            _code += $"\n\t{memFunc}({memRegister}) = {register};";
-            // LastReferencedVariable = variable;
+            AddVariableAddressToRegisterReading(variable, memRegister);
+            FreeLastReferencedAddressRegister();
+            // _code += $"\n\t{memFunc}({memRegister}) = {register};";
+            var memReg = new RegisterOperand(memRegister);
+            var memInstr = new MemInstruction(memReg);
+            var op = new MemWriteOperation(memInstr, register);
+            _operations.Add(op);
+            // // LastReferencedVariable = variable;
             FreeRegister(memRegister);
         }
 
         public void AddVariableAddressToRegisterReading(VarSymbol variable, Register register)
         {
+            register.Type = variable.Type;
+            var lhs = new RegisterOperand(register);
+            IOperation op = null;
             if (variable.IsGlobal)
+                // TODO
                 _code += $"\n\t{register} = ##{variable.BaseAddress};";
             else
-                _code += $"\n\t{register} = add(SP, #{variable.BaseAddress})";
-            register.Type = variable.Type;
+            {
+                // _code += $"\n\t{register} = add(SP, #{variable.BaseAddress})";
+                var sp = new RegisterOperand(Register.SP());
+                var baseAddr = new IntConstOperand(variable.BaseAddress);
+                var opRhs = new AddInstruction(sp, baseAddr);
+                op = new ArithmeticOperation(lhs, opRhs); 
+            }
+            _operations.Add(op);
             LastReferencedAddressRegister = register;
         }
 
+        // TODO
         public void AddRegisterToVariableWritingWithOffset(VarSymbol variable, Register register, string offset)
         {
             var memRegister = GetFreeRegister();
@@ -484,29 +530,57 @@ namespace MiniC.Generators
 
         public void AddMemToRegisterReading(Register addressRegister, SymbolType type, Register destRegister, string offsetValue = "")
         {
-            var memFunc = type.MemFunc;
-            if (memFunc == "")
-                memFunc = "memw";
-            var offsetSuffix = offsetValue == "" ? "" : $" + #{offsetValue}";
-            _code += $"\n\t{destRegister} = {memFunc}({addressRegister}{offsetSuffix});";
+            // var memFunc = type.MemFunc;
+            // if (memFunc == "")
+            //     memFunc = "memw";
+            // var offsetSuffix = offsetValue == "" ? "" : $" + #{offsetValue}";
+            // _code += $"\n\t{destRegister} = {memFunc}({addressRegister}{offsetSuffix});";
             destRegister.Type = type;
+            var lhs = new RegisterOperand(destRegister);
+            var addr = new RegisterOperand(addressRegister);
+            var offset = offsetValue == "" ? null : new IntConstOperand(offsetValue);
+            var memInstr = new MemInstruction(addr, offset);
+            var op = new MemReadOperation(lhs, memInstr);
+            _operations.Add(op);
             LastAssignedRegister = destRegister;
         }
 
         public void AddRegisterToMemWriting(Register addressRegister, Register sourceRegister, string offsetValue = "")
         {
-            var memFunc = sourceRegister.Type.MemFunc;
-            if (memFunc == "")
-                memFunc = "memw";
-            var offsetSuffix = offsetValue == "" ? "" : $" + #{offsetValue}";
-            _code += $"\n\t{memFunc}({addressRegister}{offsetSuffix}) = {sourceRegister};";
+            // var memFunc = sourceRegister.Type.MemFunc;
+            // if (memFunc == "")
+            //     memFunc = "memw";
+            // var offsetSuffix = offsetValue == "" ? "" : $" + #{offsetValue}";
+            // _code += $"\n\t{memFunc}({addressRegister}{offsetSuffix}) = {sourceRegister};";
+            var rhs = new RegisterOperand(sourceRegister);
+            var lhsReg = new RegisterOperand(addressRegister);
+            var offset = offsetValue == "" ? null : new IntConstOperand(offsetValue);
+            var memInsr = new MemInstruction(lhsReg, offset);
+            var op = new MemWriteOperation(memInsr, rhs);
+            _operations.Add(op);
+        }
+
+        public void AddValueToMemWriting(Register addressRegister, int value, string offsetValue = "")
+        {
+            var rhs = new IntConstOperand(value);
+            var lhsReg = new RegisterOperand(addressRegister);
+            var offset = offsetValue == "" ? null : new IntConstOperand(offsetValue);
+            var memInsr = new MemInstruction(lhsReg, offset);
+            var op = new MemWriteOperation(memInsr, rhs);
+            _operations.Add(op);
         }
 
         public void AddWriteStackHeadAddressToRegister(Register sourceRegister)
         {
             var currentOffset = GetCurrentStackOffset();
-            _code = $"\n\t{sourceRegister} = add(SP, #{currentOffset});";
+            // _code = $"\n\t{sourceRegister} = add(SP, #{currentOffset});";
             sourceRegister.Type = SymbolType.GetType("int");
+            var lhs = new RegisterOperand(sourceRegister);
+            var sp = new RegisterOperand(Register.SP());
+            var offset = new IntConstOperand(currentOffset);
+            var addInst = new AddInstruction(sp, offset);
+            var op = new ArithmeticOperation(lhs, addInst);
+            _operations.Add(op);
         }
         
         #endregion
@@ -514,80 +588,94 @@ namespace MiniC.Generators
         #region Working with registers
         public void AddValueToRegisterAssign(Register register, string value, SymbolType type)
         {
+            // if (type.Name == "float")
+            // {
+            //     // sfmake работает очень странно, так что будет так
+            //     var floatHex = BitConverter.GetBytes(float.Parse(value));
+            //     var floatHexAsInt = BitConverter.ToInt32(floatHex, 0);
+            //     AddValueToRegisterAssign(register, floatHexAsInt.ToString(), SymbolType.GetType("int"));
+            //     AddInlineComment($"{value} as hex (sfmake works poorly)");
+            // }
+            // else if (type.Name == "int")
+            // {
+            //     // Переводим из 8/10/16-ричной СИ в 10
+            //     var intValue = 0;
+            //     if (value.ToLower().Contains("0x"))
+            //         intValue = Convert.ToInt32(value, 16);
+            //     else if (value.First() == '0')
+            //         intValue = Convert.ToInt32(value, 8);
+            //     else
+            //         intValue = Convert.ToInt32(value, 10);
+            //     _code += $"\n\t{register} = #{intValue};";   
+            // }
+            // else  // char
+            // {
+            //     // Удаляем ''
+            //     var charValue = value.Remove(0, 1);
+            //     charValue = charValue.Remove(charValue.Length-1);
+            //     
+            //     var realChar = '\0';
+            //     if (charValue.Length == 1)
+            //         realChar = char.Parse(charValue);
+            //     else if (charValue.Length == 2)
+            //     {
+            //         switch (charValue[1])
+            //         {
+            //             case 'a':
+            //                 realChar = '\a';
+            //                 break;
+            //             case 'b':
+            //                 realChar = '\b';
+            //                 break;
+            //             case '\\':
+            //                 realChar = '\\';
+            //                 break;
+            //             case '\'':
+            //                 realChar = '\'';
+            //                 break;
+            //             case 't':
+            //                 realChar = '\t';
+            //                 break;
+            //             case 'n':
+            //                 realChar = '\n';
+            //                 break;
+            //             case 'r':
+            //                 realChar = '\r';
+            //                 break;
+            //             case '0':
+            //                 realChar = '\0';
+            //                 break;
+            //             default:
+            //                 throw new CodeGenerationException($"Unknown terminator symbol {charValue}");
+            //         }
+            //     }
+            //     else 
+            //         throw new CodeGenerationException($"Invalid char literal {value}"); 
+            //     var asciiCode = (int) realChar;
+            //     _code += $"\n\t{register} = #{asciiCode};";
+            // }
+            register.Type = type;
+            ConstOperand rhs;
             if (type.Name == "float")
             {
-                // sfmake работает очень странно, так что будет так
-                var floatHex = BitConverter.GetBytes(float.Parse(value));
-                var floatHexAsInt = BitConverter.ToInt32(floatHex, 0);
-                AddValueToRegisterAssign(register, floatHexAsInt.ToString(), SymbolType.GetType("int"));
                 AddInlineComment($"{value} as hex (sfmake works poorly)");
+                rhs = new FloatConstOperand(float.Parse(value));
             }
             else if (type.Name == "int")
-            {
-                // Переводим из 8/10/16-ричной СИ в 10
-                var intValue = 0;
-                if (value.ToLower().Contains("0x"))
-                    intValue = Convert.ToInt32(value, 16);
-                else if (value.First() == '0')
-                    intValue = Convert.ToInt32(value, 8);
-                else
-                    intValue = Convert.ToInt32(value, 10);
-                _code += $"\n\t{register} = #{intValue};";   
-            }
+                rhs = new IntConstOperand(value);
             else  // char
-            {
-                // Удаляем ''
-                var charValue = value.Remove(0, 1);
-                charValue = charValue.Remove(charValue.Length-1);
-                
-                var realChar = '\0';
-                if (charValue.Length == 1)
-                    realChar = char.Parse(charValue);
-                else if (charValue.Length == 2)
-                {
-                    switch (charValue[1])
-                    {
-                        case 'a':
-                            realChar = '\a';
-                            break;
-                        case 'b':
-                            realChar = '\b';
-                            break;
-                        case '\\':
-                            realChar = '\\';
-                            break;
-                        case '\'':
-                            realChar = '\'';
-                            break;
-                        case 't':
-                            realChar = '\t';
-                            break;
-                        case 'n':
-                            realChar = '\n';
-                            break;
-                        case 'r':
-                            realChar = '\r';
-                            break;
-                        case '0':
-                            realChar = '\0';
-                            break;
-                        default:
-                            throw new CodeGenerationException($"Unknown terminator symbol {charValue}");
-                    }
-                }
-                else 
-                    throw new CodeGenerationException($"Invalid char literal {value}"); 
-                var asciiCode = (int) realChar;
-                _code += $"\n\t{register} = #{asciiCode};";
-            }
-            register.Type = type;
+                rhs = new CharConstOperand(value);
+            var op = new ValueToRegisterOperation(register, rhs);
+            _operations.Add(op);
             LastAssignedRegister = register;
         }
 
         public void AddRegisterToRegisterAssign(Register lhs, Register rhs)
         {
-            _code += $"\n\t{lhs} = {rhs};";
+            // _code += $"\n\t{lhs} = {rhs};";
             lhs.Type = rhs.Type;
+            var op = new RegisterToRegisterOperation(lhs, rhs);
+            _operations.Add(op);
             LastAssignedRegister = lhs;
         }
 
@@ -606,39 +694,65 @@ namespace MiniC.Generators
         public void AddAddingRegisterToRegister(Register lhs, Register s1, Register s2)
         {
             var resultType = SymbolType.GetBigger(s1.Type, s2.Type);
-            var addFunc = resultType.AddFunc;
-            if (addFunc == "")
-                addFunc = "add";
-            _code += $"\n\t{lhs} = {addFunc}({s1}, {s2});";
+            // var addFunc = resultType.AddFunc;
+            // if (addFunc == "")
+            //     addFunc = "add";
+            // _code += $"\n\t{lhs} = {addFunc}({s1}, {s2});";
+            // LastAssignedRegister = lhs;
             lhs.Type = resultType;
+            var registerL = new RegisterOperand(lhs);
+            var registerR1 = new RegisterOperand(s1);
+            var registerR2 = new RegisterOperand(s2);
+            var addInstruction = new AddInstruction(registerR1, registerR2);
+            var operation = new ArithmeticOperation(registerL, addInstruction);
+            _operations.Add(operation);
             LastAssignedRegister = lhs;
         }
 
         public void AddAddingValueToRegister(Register lhs, Register r1, int value)
         {
-            _code += $"\n\t{lhs} = add({r1}, #{value});";
             lhs.Type = SymbolType.GetType("int");
+            var regL = new RegisterOperand(lhs);
+            var regR = new RegisterOperand(r1);
+            var val = new IntConstOperand(value);
+            var addInstruction = new AddInstruction(regR, val);
+            var operation = new ArithmeticOperation(regL, addInstruction);
+            _operations.Add(operation);
+            // _code += $"\n\t{lhs} = add({r1}, #{value});";
             LastAssignedRegister = lhs;
         }
         
         public void AddSubRegisterFromRegister(Register lhs, Register s1, Register s2)
         {
+            
             var resultType = SymbolType.GetBigger(s1.Type, s2.Type);
-            var subFunc = resultType.SubFunc;
-            if (subFunc == "")
-                subFunc = "sub";
-            _code += $"\n\t{lhs} = {subFunc}({s1}, {s2});";
+            // var subFunc = resultType.SubFunc;
+            // if (subFunc == "")
+            //     subFunc = "sub";
+            // _code += $"\n\t{lhs} = {subFunc}({s1}, {s2});";
             lhs.Type = resultType;
+            var registerL = new RegisterOperand(lhs);
+            var registerR1 = new RegisterOperand(s1);
+            var registerR2 = new RegisterOperand(s2);
+            var addInstruction = new AddInstruction(registerR1, registerR2);
+            var operation = new ArithmeticOperation(registerL, addInstruction);
+            _operations.Add(operation);
             LastAssignedRegister = lhs;
         }
 
         public void AddNegateRegister(Register destRegister, Register sourceRegister)
         {
-            _code += $"\n\t{destRegister} = neg({sourceRegister});";
+            // _code += $"\n\t{destRegister} = neg({sourceRegister});";
             destRegister.Type = sourceRegister.Type;
+            var regL = new RegisterOperand(destRegister);
+            var regR = new RegisterOperand(sourceRegister);
+            var negInstruction = new NegInstruction(regR);
+            var operation = new ArithmeticOperation(regL, negInstruction);
+            _operations.Add(operation);
             LastAssignedRegister = destRegister;
         }
 
+        // TODO
         public void AddRegisterMpyRegister(Register destRegister, Register r1, Register r2)
         {
             var resultType = SymbolType.GetBigger(r1.Type, r2.Type);
@@ -650,6 +764,7 @@ namespace MiniC.Generators
             LastAssignedRegister = destRegister;
         }
 
+        // TODO
         public void AddRegisterDivRegister(Register destRegister, Register r1, Register r2)
         {
             var type = SymbolType.GetBigger(r1.Type, r2.Type);
@@ -659,11 +774,13 @@ namespace MiniC.Generators
                 divWithRegisterSaving(destRegister, r1, r2, 5, "__hexagon_divsi3");
         }
 
+        // TODO
         public void AddRegisterModRegister(Register destRegister, Register r1, Register r2)
         {
             divWithRegisterSaving(destRegister, r1, r2, 2, "__hexagon_umodsi3");
         } 
 
+        // TODO
         private void divWithRegisterSaving(Register destRegister, Register r1, Register r2, int maxSavedRegisterIdx, 
             string divFunc)
         {
@@ -718,8 +835,12 @@ namespace MiniC.Generators
         {
             if (sourceRegister.Type.Name == "float")
                 return;
-            _code += $"\n\t{destRegister} = convert_w2sf({sourceRegister});";
+            // _code += $"\n\t{destRegister} = convert_w2sf({sourceRegister});";
             destRegister.Type = SymbolType.GetType("float");
+            var lReg = new RegisterOperand(destRegister);
+            var convInstr = new IntToFloatConvertInstruction(sourceRegister);
+            var operation = new ConvertOperation(lReg, convInstr);
+            _operations.Add(operation);
             LastAssignedRegister = destRegister;
         }
 
@@ -727,8 +848,12 @@ namespace MiniC.Generators
         {
             if (sourceRegister.Type.Name == "int" || sourceRegister.Type.Name == "char")
                 return;
-            _code += $"\n\t{destRegister} = convert_sf2w({sourceRegister});";
+            // _code += $"\n\t{destRegister} = convert_sf2w({sourceRegister});";
             destRegister.Type = SymbolType.GetType("int");
+            var lReg = new RegisterOperand(destRegister);
+            var convInstr = new FloatToIntConvertInstruction(sourceRegister);
+            var operation = new ConvertOperation(lReg, convInstr);
+            _operations.Add(operation);
             LastAssignedRegister = destRegister;
         }
 
@@ -748,53 +873,89 @@ namespace MiniC.Generators
         public void AddRegisterAndRegister(Register destRegister, Register r1, Register r2)
         {
             var resultType = SymbolType.GetBigger(r1.Type, r2.Type);
-            _code += $"\n\t{destRegister} = and({r1}, {r2});";
             destRegister.Type = resultType;
+            // _code += $"\n\t{destRegister} = and({r1}, {r2});";
+            var lReg = new RegisterOperand(destRegister);
+            var rReg1 = new RegisterOperand(r1);
+            var rReg2 = new RegisterOperand(r2);
+            var instr = new AndInstruction(rReg1, rReg2);
+            var op = new ArithmeticOperation(lReg, instr);
+            _operations.Add(op);
             LastAssignedRegister = destRegister;
         }
 
         public void AddRegisterOrRegister(Register destRegister, Register r1, Register r2)
         {
             var resultType = SymbolType.GetBigger(r1.Type, r2.Type);
-            _code += $"\n\t{destRegister} = or({r1}, {r2});";
             destRegister.Type = resultType;
+            // _code += $"\n\t{destRegister} = or({r1}, {r2});";
+            var lReg = new RegisterOperand(destRegister);
+            var rReg1 = new RegisterOperand(r1);
+            var rReg2 = new RegisterOperand(r2);
+            var instr = new OrInstruction(rReg1, rReg2);
+            var op = new ArithmeticOperation(lReg, instr);
+            _operations.Add(op);
             LastAssignedRegister = destRegister;
         }
 
         public void AddRegisterXorRegister(Register destRegister, Register r1, Register r2)
         {
             var resultType = SymbolType.GetBigger(r1.Type, r2.Type);
-            _code += $"\n\t{destRegister} = xor({r1}, {r2});";
             destRegister.Type = resultType;
+            // _code += $"\n\t{destRegister} = xor({r1}, {r2});";
+            var lReg = new RegisterOperand(destRegister);
+            var rReg1 = new RegisterOperand(r1);
+            var rReg2 = new RegisterOperand(r2);
+            var instr = new XorInstruction(rReg1, rReg2);
+            var op = new ArithmeticOperation(lReg, instr);
+            _operations.Add(op);
             LastAssignedRegister = destRegister;
         }
 
         public void AddRegisterRightShiftRegister(Register destRegister, Register r1, Register r2)
         {
             var resultType = SymbolType.GetBigger(r1.Type, r2.Type);
-            _code += $"\n\t{destRegister} = lsr({r1}, {r2});";
             destRegister.Type = resultType;
+            // _code += $"\n\t{destRegister} = lsr({r1}, {r2});";
+            var lReg = new RegisterOperand(destRegister);
+            var rReg1 = new RegisterOperand(r1);
+            var rReg2 = new RegisterOperand(r2);
+            var instr = new RShiftInstruction(rReg1, rReg2);
+            var op = new ArithmeticOperation(lReg, instr);
+            _operations.Add(op);
             LastAssignedRegister = destRegister;
         }
 
         public void AddRegisterLefShiftRegister(Register destRegister, Register r1, Register r2)
         {
             var resultType = SymbolType.GetBigger(r1.Type, r2.Type);
-            _code += $"\n\t{destRegister} = lsl({r1}, {r2});";
             destRegister.Type = resultType;
+            // _code += $"\n\t{destRegister} = lsl({r1}, {r2});";
+            var lReg = new RegisterOperand(destRegister);
+            var rReg1 = new RegisterOperand(r1);
+            var rReg2 = new RegisterOperand(r2);
+            var instr = new LShiftInstruction(rReg1, rReg2);
+            var op = new ArithmeticOperation(lReg, instr);
+            _operations.Add(op);
             LastAssignedRegister = destRegister;
         }
 
         public void AddNotRegister(Register destRegister, Register sourceRegister)
         {
-            _code += $"\n\t{destRegister} = not({sourceRegister});";
             destRegister.Type = sourceRegister.Type;
+            // _code += $"\n\t{destRegister} = not({sourceRegister});";
+            var lReg = new RegisterOperand(destRegister);
+            var rReg = new RegisterOperand(sourceRegister);
+            var instr = new NotInstruction(rReg);
+            var op = new ArithmeticOperation(lReg, instr);
+            _operations.Add(op);
             LastAssignedRegister = destRegister;
         }
         
         #endregion
         
         #region Adding compares
+        // TODO
         public void AddCompareRegisterEqRegister(Register pRegister, Register r1, Register r2, bool negate = false)
         {
             var type = SymbolType.GetBigger(r1.Type, r2.Type);
@@ -811,6 +972,7 @@ namespace MiniC.Generators
             }
         }
 
+        // TODO
         public void AddCompareRegisterEqNumber(Register pRegister, Register register, string value, bool negate = false)
         {
             var type = register.Type;
@@ -830,6 +992,7 @@ namespace MiniC.Generators
             }
         }
 
+        // TODO
         public void AddCompareRegisterGeRegister(Register pRegister, Register r1, Register r2)
         {
             var type = SymbolType.GetBigger(r1.Type, r2.Type);
@@ -837,6 +1000,7 @@ namespace MiniC.Generators
             _code += $"\n\t{pRegister} = {sfPrefix}cmp.ge({r1}, {r2});";
         }
         
+        // TODO
         public void AddCompareRegisterGtRegister(Register pRegister, Register r1, Register r2)
         {
             var type = SymbolType.GetBigger(r1.Type, r2.Type);
@@ -844,6 +1008,7 @@ namespace MiniC.Generators
             _code += $"\n\t{pRegister} = {sfPrefix}cmp.gt({r1}, {r2});";
         }
         
+        // TODO
         public void AddCompareRegisterLeRegister(Register pRegister, Register r1, Register r2)
         {
             // LE делается через GE простым свапом параметров
@@ -852,6 +1017,7 @@ namespace MiniC.Generators
             _code += $"\n\t{pRegister} = {sfPrefix}cmp.ge({r2}, {r1});";
         }
         
+        // TODO
         public void AddCompareRegisterLtRegister(Register pRegister, Register r1, Register r2)
         {
             // LT делается через GT простым свапом параметров
@@ -865,23 +1031,28 @@ namespace MiniC.Generators
         #region Adding calls, jumps and returns
         public void AddJump(string label)
         {
-            _code += $"\n\tjump {label};";
+            // _code += $"\n\tjump {label};";
+            var op = new JumpOperation(label);
+            _operations.Add(op);
         }
 
+        // TODO
         public void AddConditionalJump(Register pRegister, string label, bool negate = false)
         {
             var negationSym = negate ? "!" : "";
             _code += $"\nif({negationSym}{pRegister}) jump {label}";
         }
-
-        public void AddJumpToRegister(Register register)
-        {
-            _code += $"\n\tjumpr {register};";
-        }
+        
+        // public void AddJumpToRegister(Register register)
+        // {
+        //     _code += $"\n\tjumpr {register};";
+        // }
 
         public void AddCall(string funcName)
         {
-            _code += $"\n\tcall func_{funcName}_start;";
+            // _code += $"\n\tcall func_{funcName}_start;";
+            string labelName = $"func_{funcName}_start";
+            var op = new JumpOperation(labelName, true);
         }
         
         #endregion
@@ -889,24 +1060,26 @@ namespace MiniC.Generators
         #region Adding comments
         public void AddInlineComment(string comment)
         {
-            _code += $"\t// {comment}";
+            // _code += $"\t// {comment}";
+            _operations.Add(new CommentOperation(comment));
         }
 
         public void AddComment(string comment, bool withTab = true)
         {
-            var tabSym = withTab ? "\t" : "";
-            _code += $"\n{tabSym}// {comment}";
+            // var tabSym = withTab ? "\t" : "";
+            // _code += $"\n{tabSym}// {comment}";
+            _operations.Add(new CommentOperation(comment, withTab));
         }
         
         #endregion
 
-        #region Adding plain code
-        public void AddPlainCode(string code)
-        {
-            _code += $"\n{code}";
-        }
-        
-        #endregion
+        // #region Adding plain code
+        // public void AddPlainCode(string code)
+        // {
+        //     _code += $"\n{code}";
+        // }
+        //
+        // #endregion
 
     }
 }

@@ -42,7 +42,7 @@ namespace MiniC.Generators.Expressions
                 var ternaryExpressionGen = new TernaryExpressionGenerator();
                 // True-ветка тернарного выражения
                 currentCode.AddComment("Ternary true branch");
-                currentCode.AddPlainCode($"{labelTrue}:");
+                currentCode.AddLabel(labelTrue);
                 currentCode = ternaryExpressionGen.GenerateCodeForContext(ternaryExpressions[0], currentCode);
                 var trueValueRegister = getValueFromExpression(currentCode);
                 
@@ -54,7 +54,7 @@ namespace MiniC.Generators.Expressions
                 
                 // False-ветка тернарного выражения
                 currentCode.AddComment("Ternary false branch");
-                currentCode.AddPlainCode($"{labelFalse}:");
+                currentCode.AddLabel(labelFalse);
                 currentCode = ternaryExpressionGen.GenerateCodeForContext(ternaryExpressions[1], currentCode);
                 var falseValueRegister = getValueFromExpression(currentCode);
                 
@@ -72,7 +72,7 @@ namespace MiniC.Generators.Expressions
                 
                 // Метка конца тернарного выражения (для простоты чтения асма)
                 var labelEnd = $"ternary_{ternaryExprsCnt}_end";
-                currentCode.AddPlainCode($"{labelEnd}:");
+                currentCode.AddLabel(labelEnd);
                 
                 // Чистка регистров
                 currentCode.FreePredicateRegister(predicateRegister);
