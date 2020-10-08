@@ -3,11 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using MiniC.Exceptions;
 using MiniC.Operations;
 using MiniC.Operations.ConcreteOperations;
+using MiniC.Operations.ConcreteOperations.AddGlobalSymbolOperations;
+using MiniC.Operations.ConcreteOperations.SectionOperation;
 using MiniC.Operations.Operands;
 using MiniC.Operations.Operands.ConstOperands;
 using MiniC.Operations.Operands.Instructions;
@@ -21,27 +24,35 @@ namespace MiniC.Generators
 {
     public class AsmCodeWriter
     {
-        private string _variables = "";
-        private string _code = "";
+        // private string _variables = "";
+        // private string _code = "";
 
+        private ArrayList _variables = new ArrayList();
+        private void addVariable(IOperation op)
+        {
+            _variables.Add(op);
+        }
+        
         private ArrayList _operations = new ArrayList();
         private void addOperation(IOperation op)
         {
-            Console.WriteLine(op.AsmString);
             _operations.Add(op);
         }
-        
-        public string Code { get => _code; }
-        public string Variables { get => _variables; }
-        public string AllCode { get => "\t.section\t.data" + Variables + "\n\n\t.section\t.text\n" + Code + "\n"; }
 
         public ParseTreeProperty<SymbolType> Conversions;
+        public SymbolType LastReferencedStructType = null;
+        public ISymbol LastReferencedSymbol = null;
 
-        public AsmCodeWriter(ParseTreeProperty<Scope> skopes, GlobalScope globalScope, ParseTreeProperty<SymbolType> conversions)
+        public AsmCodeWriter(ParseTreeProperty<Scope> skopes, GlobalScope globalScope, 
+            ParseTreeProperty<SymbolType> conversions)
         {
             scopes = skopes;
             GlobalScope = globalScope;
             Conversions = conversions;
+            
+            addVariable(new DataSectionOperation());
+            addOperation(new TextSectionOperation());
+            
             AvaliableRegisters = new Register[29];
             for (int i = 0; i < AvaliableRegisters.Length; i++)
                 AvaliableRegisters[i] = new Register($"r{i}");
@@ -50,9 +61,6 @@ namespace MiniC.Generators
                 AvaliablePredicateRegisters[i] = new Register($"p{i}");
         }
 
-        public SymbolType LastReferencedStructType = null;
-        public ISymbol LastReferencedSymbol = null;
-        
         #region Registers work
         
         public Register LastAssignedRegister;
@@ -171,20 +179,29 @@ namespace MiniC.Generators
         }
 
         #endregion
+
+        #region Getting code
+
+        public string GetCode()
+        {
+            var stringBuilder = new StringBuilder();
+            foreach (IOperation variable in _variables)
+                stringBuilder.AppendLine(variable.AsmString);
+            stringBuilder.Append('\n');
+            foreach (IOperation operation in _operations)
+                stringBuilder.AppendLine(operation.AsmString);
+            return stringBuilder.ToString();
+        }
         
-        // Writing to file
         public void WriteToFile(string filename = "../../../generated.S")
         {
-            using (var writer = new StreamWriter(File.Open(filename, FileMode.Create)))
-            {
-                writer.AutoFlush = true;
-                // writer.Write(AllCode);
-                foreach (IOperation operation in _operations)
-                {
-                    writer.WriteLine(operation.AsmString);
-                }
-            }
+            using var writer = new StreamWriter(File.Open(filename, FileMode.Create));
+            writer.AutoFlush = true;
+            // writer.Write(AllCode);
+            writer.Write(GetCode());
         }
+
+        #endregion
 
         #region Adding global variables
 
@@ -194,8 +211,7 @@ namespace MiniC.Generators
             symbol.BaseAddress = symbol.Name;
             addGlobalVariableRecursive(symbol.Name, symbol);
         }
-
-        // TODO
+        
         private void addGlobalVariableRecursive(string name, ISymbol symbol)
         {
             var defaultTypes = new string[] {"char", "int", "float"};
@@ -208,13 +224,15 @@ namespace MiniC.Generators
             }
             else
             {
-                _code += $"\n{name}:";
+                // _code += $"\n{name}:";
+                AddLabel(name);
                 var structSymbol = GlobalScope.FindStruct(symbol.Type);
                 if (symbol.Type.IsArray)
                 {
                     for (int i = 0; i < symbol.ArraySize; i++)
                     {
-                        _code += $"\n{name}_{i}:";
+                        // _code += $"\n{name}_{i}:";
+                        AddLabel($"{name}_{i}");
                         foreach (var symKeyValue in structSymbol.Table)
                         {
                             var symName = symKeyValue.Key;
@@ -234,22 +252,16 @@ namespace MiniC.Generators
                 }
             }
         }
-
+        
         private void addGlobalVariable(string name, SymbolType type)
         {
-            _variables += $"\n{name}:\n\t.{type.Name}\t0";
+            // _variables += $"\n{name}:\n\t.{type.Name}\t0";
+            addVariable(new AddGlobalVariableOperation(name, type));
         }
-
-        public void addGlobalEmptyArray(string name, SymbolType type, int capacity)
+        
+        private void addGlobalEmptyArray(string name, SymbolType type, int capacity)
         {
-            var header = $"\n{name}:\n\t.{type.Name} ";
-            for (int i = 0; i < capacity; i++)
-            {
-                header += "0, ";
-            }
-            if (capacity > 0)
-                header = header.Remove(header.Length - 2, 2);
-            _variables += header;
+            addVariable(new AddGlobalArrayOperation(name, type, capacity));
         }
 
         #endregion
@@ -493,15 +505,16 @@ namespace MiniC.Generators
             // // LastReferencedVariable = variable;
             FreeRegister(memRegister);
         }
-
-        // TODO
+        
         public void AddVariableAddressToRegisterReading(VarSymbol variable, Register register)
         {
             register.Type = variable.Type;
-            IOperation op = null;
+            IOperation op;
             if (variable.IsGlobal)
-                // TODO
-                _code += $"\n\t{register} = ##{variable.BaseAddress};";
+            {
+                // _code += $"\n\t{register} = ##{variable.BaseAddress};";
+                op = new GlobalVariableAddressToRegisterOperation(register, variable);
+            }
             else
             {
                 // _code += $"\n\t{register} = add(SP, #{variable.BaseAddress})";
@@ -512,19 +525,29 @@ namespace MiniC.Generators
             addOperation(op);
             LastReferencedAddressRegister = register;
         }
-
-        // TODO
+        
         public void AddRegisterToVariableWritingWithOffset(VarSymbol variable, Register register, string offset)
         {
             var memRegister = GetFreeRegister();
-            var memFunc = variable.Type.MemFunc;
-            if (memFunc.Length == 0)
-                memFunc = SymbolType.GetType("int").MemFunc;
+            IOperation op;
             if (variable.IsGlobal)
-                _code += $"\n\t{memRegister} = ##{variable.BaseAddress};";
+            {
+                // _code += $"\n\t{memRegister} = ##{variable.BaseAddress};";
+                op = new GlobalVariableAddressToRegisterOperation(register, variable);
+            }
             else
-                _code += $"\n\t{memRegister} = add(SP, #{variable.BaseAddress});";
-            _code += $"\n\t{memFunc}({memRegister} + #{offset}) = {register};";
+            {
+                // _code += $"\n\t{memRegister} = add(SP, #{variable.BaseAddress});";
+                var addrOperand = new IntConstOperand(variable.BaseAddress);
+                var addInstr = new AddInstruction(Register.SP(), addrOperand);
+                var addrReadOp = new ArithmeticOperation(memRegister, addInstr);
+                addOperation(addrReadOp);
+                
+                // _code += $"\n\t{memFunc}({memRegister} + #{offset}) = {register};";
+                var memInstr = new MemInstruction(memRegister, offset);
+                op = new MemWriteOperation(memInstr, register);
+            }
+            addOperation(op);
             FreeRegister(memRegister);
         }
 
