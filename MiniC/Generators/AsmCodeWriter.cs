@@ -212,7 +212,7 @@ namespace MiniC.Generators
             else
             {
                 // _code += $"\n{name}:";
-                AddLabel(name);
+                AddLabel(name, false);
                 var structSymbol = GlobalScope.FindStruct(symbol.Type);
                 if (symbol.Type.IsArray)
                 {
@@ -383,10 +383,13 @@ namespace MiniC.Generators
 
         #region Adding basic labels
 
-        public void AddLabel(string label)
+        public void AddLabel(string label, bool toTextSection = true)
         {
             var op = new LabelOperation(label);
-            addOperationToTextSection(op);
+            if (toTextSection)
+                addOperationToTextSection(op);
+            else
+                addOperationToDataSection(op);
         }
 
         #endregion
