@@ -8,12 +8,12 @@ namespace MiniC.Operations.ConcreteOperations
     public class GlobalVariableAddressToRegisterOperation: BaseOperation
     {
         // protected RegisterOperand lhs;
-        // protected IntConstOperand rhs;
+        // protected LabelOperand rhs;
         
         public RegisterOperand LhsAsRegisterOperand => lhs as RegisterOperand;
-        public IntConstOperand RhsAsIntConstOperand => lhs as IntConstOperand;
+        public LabelOperand RhsAsIntConstOperand => lhs as LabelOperand;
 
-        public GlobalVariableAddressToRegisterOperation(RegisterOperand lhs, IntConstOperand rhs)
+        public GlobalVariableAddressToRegisterOperation(RegisterOperand lhs, LabelOperand rhs)
         {
             this.lhs = lhs;
             this.rhs = rhs;
@@ -22,11 +22,11 @@ namespace MiniC.Operations.ConcreteOperations
         public GlobalVariableAddressToRegisterOperation(Register lhs, VarSymbol rhs)
         {
             this.lhs = new RegisterOperand(lhs);
-            this.rhs = new IntConstOperand(rhs.BaseAddress);
+            this.rhs = new LabelOperand(rhs.BaseAddress);
         }
 
         public override OperationType OperationType => OperationType.Assign;
 
-        public override string OperationAsmString => $"{Lhs.AsmString} = ##{Rhs.AsmString}";
+        public override string OperationAsmString => $"\t{Lhs.AsmString} = ##{Rhs.AsmString}";
     }
 }

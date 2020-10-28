@@ -1,13 +1,11 @@
-// int globalX = 3;
-
-int foo(int x) {
-    int b = 3;
-    return 0;
-}
+int globalX[] = {1, 2, 3};
 
 int main(void) {
+    int x = 1;
+    int y = 5;
+    int z;
     
-    foo(0);
+    z = y % x;
     
     return 0;
 }

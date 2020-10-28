@@ -7,8 +7,8 @@ namespace MiniC.Operations
         OperationType OperationType { get; }
         IOperand Lhs { get; }
         IOperand Rhs { get; }
-        string UpperComment { get;}
-        void SetUpperComment(string comment, bool withTab);
+        string LowerComment { get;}
+        void SetLowerComment(string comment, bool withTab);
         string InlineComment { get; set; }
         string OperationAsmString { get; }
 

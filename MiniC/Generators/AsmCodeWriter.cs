@@ -11,6 +11,7 @@ using MiniC.Operations;
 using MiniC.Operations.ConcreteOperations;
 using MiniC.Operations.ConcreteOperations.AddGlobalSymbolOperations;
 using MiniC.Operations.ConcreteOperations.SectionOperation;
+using MiniC.Operations.Operands;
 using MiniC.Operations.Operands.ConstOperands;
 using MiniC.Operations.Operands.Instructions;
 using MiniC.Operations.Operands.Instructions.AllocInstructions;
@@ -23,17 +24,17 @@ namespace MiniC.Generators
 {
     public class AsmCodeWriter
     {
-        private ArrayList _variables = new ArrayList();
-        private void addVariable(IOperation op)
-        {
-            _variables.Add(op);
-        }
-        
-        private ArrayList _operations = new ArrayList();
+        private ArrayList _dataSection = new ArrayList();
+        private ArrayList _textSection = new ArrayList();
         private IOperation _lastAddedOperation = null;
-        private void addOperation(IOperation op)
+
+        private void addOperationToDataSection(IOperation op)
         {
-            _operations.Add(op);
+            _dataSection.Add(op);
+        }
+        private void addOperationToTextSection(IOperation op)
+        {
+            _textSection.Add(op);
             _lastAddedOperation = op;
         }
 
@@ -42,17 +43,25 @@ namespace MiniC.Generators
         public ISymbol LastReferencedSymbol = null;
 
         public AsmCodeWriter(ParseTreeProperty<Scope> skopes, GlobalScope globalScope, 
-            ParseTreeProperty<SymbolType> conversions)
+            ParseTreeProperty<SymbolType> conversions, bool useRandomRegisterGetter = false)
         {
             scopes = skopes;
             GlobalScope = globalScope;
             Conversions = conversions;
             
-            addVariable(new DataSectionOperation());
-            addOperation(new TextSectionOperation());
-            
-            AvaliableRegisters = new ConsistentRegisterGetter("r", 29);
-            AvaliablePredicateRegisters = new ConsistentRegisterGetter("p", 4);
+            addOperationToDataSection(new DataSectionOperation());
+            addOperationToTextSection(new TextSectionOperation());
+
+            if (useRandomRegisterGetter)
+            {
+                AvaliableRegisters = new RandomRegisterGetter("r", 29);
+                AvaliablePredicateRegisters = new RandomRegisterGetter("p", 4);
+            }
+            else
+            {
+                AvaliableRegisters = new ConsistentRegisterGetter("r", 29);
+                AvaliablePredicateRegisters = new ConsistentRegisterGetter("p", 4);
+            }
         }
 
         #region Registers work
@@ -163,10 +172,10 @@ namespace MiniC.Generators
         public string GetCode()
         {
             var stringBuilder = new StringBuilder();
-            foreach (IOperation variable in _variables)
+            foreach (IOperation variable in _dataSection)
                 stringBuilder.AppendLine(variable.AsmString);
             stringBuilder.Append('\n');
-            foreach (IOperation operation in _operations)
+            foreach (IOperation operation in _textSection)
                 stringBuilder.AppendLine(operation.AsmString);
             return stringBuilder.ToString();
         }
@@ -234,12 +243,12 @@ namespace MiniC.Generators
         private void addGlobalVariable(string name, SymbolType type)
         {
             // _variables += $"\n{name}:\n\t.{type.Name}\t0";
-            addVariable(new AddGlobalVariableOperation(name, type));
+            addOperationToDataSection(new AddGlobalVariableOperation(name, type));
         }
         
         private void addGlobalEmptyArray(string name, SymbolType type, int capacity)
         {
-            addVariable(new AddGlobalArrayOperation(name, type, capacity));
+            addOperationToDataSection(new AddGlobalArrayOperation(name, type, capacity));
         }
 
         #endregion
@@ -345,7 +354,7 @@ namespace MiniC.Generators
             var label = $"func_{name}_end";
             AddLabel(label);
             var op = new DeallocOperation(new DeallocReturnInstruction());
-            addOperation(op);
+            addOperationToTextSection(op);
             PopFunc();
         }
 
@@ -367,7 +376,7 @@ namespace MiniC.Generators
         public void AddAllocateStackFrame4000()
         {
             var op = new AllocOperation(4000);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
 
         #endregion
@@ -377,7 +386,7 @@ namespace MiniC.Generators
         public void AddLabel(string label)
         {
             var op = new LabelOperation(label);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
 
         #endregion
@@ -479,7 +488,7 @@ namespace MiniC.Generators
             FreeLastReferencedAddressRegister();
             var memInstr = new MemInstruction(memRegister);
             var op = new MemWriteOperation(memInstr, register);
-            addOperation(op);
+            addOperationToTextSection(op);
             // // LastReferencedVariable = variable;
             FreeRegister(memRegister);
         }
@@ -500,18 +509,18 @@ namespace MiniC.Generators
                 var opRhs = new AddInstruction(Register.SP(), baseAddr);
                 op = new ArithmeticOperation(register, opRhs); 
             }
-            addOperation(op);
+            addOperationToTextSection(op);
             LastReferencedAddressRegister = register;
         }
         
         public void AddRegisterToVariableWritingWithOffset(VarSymbol variable, Register register, string offset)
         {
             var memRegister = GetFreeRegister();
-            IOperation op;
             if (variable.IsGlobal)
             {
                 // _code += $"\n\t{memRegister} = ##{variable.BaseAddress};";
-                op = new GlobalVariableAddressToRegisterOperation(register, variable);
+                var addrReadOp = new GlobalVariableAddressToRegisterOperation(memRegister, variable);
+                addOperationToTextSection(addrReadOp);
             }
             else
             {
@@ -519,13 +528,12 @@ namespace MiniC.Generators
                 var addrOperand = new IntConstOperand(variable.BaseAddress);
                 var addInstr = new AddInstruction(Register.SP(), addrOperand);
                 var addrReadOp = new ArithmeticOperation(memRegister, addInstr);
-                addOperation(addrReadOp);
-                
-                // _code += $"\n\t{memFunc}({memRegister} + #{offset}) = {register};";
-                var memInstr = new MemInstruction(memRegister, offset);
-                op = new MemWriteOperation(memInstr, register);
+                addOperationToTextSection(addrReadOp);
             }
-            addOperation(op);
+            // _code += $"\n\t{memFunc}({memRegister} + #{offset}) = {register};";
+            var memInstr = new MemInstruction(memRegister, offset);
+            var op = new MemWriteOperation(memInstr, register);
+            addOperationToTextSection(op);
             FreeRegister(memRegister);
         }
 
@@ -534,7 +542,7 @@ namespace MiniC.Generators
             destRegister.Type = type;
             var memInstr = new MemInstruction(addressRegister, offsetValue);
             var op = new MemReadOperation(destRegister, memInstr);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = destRegister;
         }
 
@@ -542,14 +550,14 @@ namespace MiniC.Generators
         {
             var memInsr = new MemInstruction(addressRegister, offsetValue);
             var op = new MemWriteOperation(memInsr, sourceRegister);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
 
         public void AddValueToMemWriting(Register addressRegister, int value, string offsetValue = "")
         {
             var memInsr = new MemInstruction(addressRegister, offsetValue);
             var op = new MemWriteOperation(memInsr, value);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
 
         #endregion
@@ -569,7 +577,7 @@ namespace MiniC.Generators
             else  // char
                 rhs = new CharConstOperand(value);
             var op = new ValueToRegisterOperation(register, rhs);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = register;
         }
 
@@ -577,7 +585,7 @@ namespace MiniC.Generators
         {
             lhs.Type = rhs.Type;
             var op = new RegisterToRegisterOperation(lhs, rhs);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = lhs;
         }
         
@@ -589,8 +597,8 @@ namespace MiniC.Generators
             var ifFalseOp = new RegisterToRegisterOperation(destRegister, sourceRegisterIfFalse);
             var condOpIfTrue = new ConditionalOperation(pRegister, ifTrueOp, false);
             var condOpIfFalse = new ConditionalOperation(pRegister, ifFalseOp, true);
-            addOperation(condOpIfTrue);
-            addOperation(condOpIfFalse);
+            addOperationToTextSection(condOpIfTrue);
+            addOperationToTextSection(condOpIfFalse);
             LastAssignedRegister = destRegister;
         }
         
@@ -603,7 +611,7 @@ namespace MiniC.Generators
             lhs.Type = resultType;
             var addInstruction = new AddInstruction(s1, s2);
             var operation = new ArithmeticOperation(lhs, addInstruction);
-            addOperation(operation);
+            addOperationToTextSection(operation);
             LastAssignedRegister = lhs;
         }
 
@@ -613,7 +621,7 @@ namespace MiniC.Generators
             var val = new IntConstOperand(value);
             var addInstruction = new AddInstruction(r1, val);
             var operation = new ArithmeticOperation(lhs, addInstruction);
-            addOperation(operation);
+            addOperationToTextSection(operation);
             LastAssignedRegister = lhs;
         }
         
@@ -624,7 +632,7 @@ namespace MiniC.Generators
             lhs.Type = resultType;
             var addInstruction = new SubInstruction(s1, s2);
             var operation = new ArithmeticOperation(lhs, addInstruction);
-            addOperation(operation);
+            addOperationToTextSection(operation);
             LastAssignedRegister = lhs;
         }
 
@@ -633,7 +641,7 @@ namespace MiniC.Generators
             destRegister.Type = sourceRegister.Type;
             var negInstruction = new NegInstruction(sourceRegister);
             var operation = new ArithmeticOperation(destRegister, negInstruction);
-            addOperation(operation);
+            addOperationToTextSection(operation);
             LastAssignedRegister = destRegister;
         }
         
@@ -643,7 +651,7 @@ namespace MiniC.Generators
             destRegister.Type = resultType;
             var mpyInstr = new MultiplyInstruction(r1, r2);
             var op = new ArithmeticOperation(destRegister, mpyInstr);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = destRegister;
         }
         
@@ -720,7 +728,7 @@ namespace MiniC.Generators
             destRegister.Type = SymbolType.GetType("float");
             var convInstr = new IntToFloatConvertInstruction(sourceRegister);
             var operation = new ConvertOperation(destRegister, convInstr);
-            addOperation(operation);
+            addOperationToTextSection(operation);
             LastAssignedRegister = destRegister;
         }
 
@@ -731,7 +739,7 @@ namespace MiniC.Generators
             destRegister.Type = SymbolType.GetType("int");
             var convInstr = new FloatToIntConvertInstruction(sourceRegister);
             var operation = new ConvertOperation(destRegister, convInstr);
-            addOperation(operation);
+            addOperationToTextSection(operation);
             LastAssignedRegister = destRegister;
         }
 
@@ -754,7 +762,7 @@ namespace MiniC.Generators
             destRegister.Type = resultType;
             var instr = new AndInstruction(r1, r2);
             var op = new ArithmeticOperation(destRegister, instr);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = destRegister;
         }
 
@@ -764,7 +772,7 @@ namespace MiniC.Generators
             destRegister.Type = resultType;
             var instr = new OrInstruction(r1, r2);
             var op = new ArithmeticOperation(destRegister, instr);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = destRegister;
         }
 
@@ -774,7 +782,7 @@ namespace MiniC.Generators
             destRegister.Type = resultType;
             var instr = new XorInstruction(r1, r2);
             var op = new ArithmeticOperation(destRegister, instr);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = destRegister;
         }
 
@@ -784,7 +792,7 @@ namespace MiniC.Generators
             destRegister.Type = resultType;
             var instr = new RShiftInstruction(r1, r2);
             var op = new ArithmeticOperation(destRegister, instr);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = destRegister;
         }
 
@@ -794,7 +802,7 @@ namespace MiniC.Generators
             destRegister.Type = resultType;
             var instr = new LShiftInstruction(r1, r2);
             var op = new ArithmeticOperation(destRegister, instr);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = destRegister;
         }
 
@@ -803,7 +811,7 @@ namespace MiniC.Generators
             destRegister.Type = sourceRegister.Type;
             var instr = new NotInstruction(sourceRegister);
             var op = new ArithmeticOperation(destRegister, instr);
-            addOperation(op);
+            addOperationToTextSection(op);
             LastAssignedRegister = destRegister;
         }
         
@@ -815,7 +823,7 @@ namespace MiniC.Generators
             var type = SymbolType.GetBigger(r1.Type, r2.Type);
             var eqInstruction = new EqInstruction(r1, r2, negate);
             var op = new CompareOperation(pRegister, eqInstruction);
-            addOperation(op);
+            addOperationToTextSection(op);
             if (type.Name == "float" && negate) 
             {
                 AddComment("Can't do !sfcmp.eq, so inverting resulting pregister");
@@ -838,7 +846,7 @@ namespace MiniC.Generators
                 var valueOperand = new IntConstOperand(value);
                 var eqInstr = new EqInstruction(register, valueOperand, negate);
                 var op = new CompareOperation(pRegister, eqInstr);
-                addOperation(op);
+                addOperationToTextSection(op);
             }
         }
         
@@ -846,14 +854,14 @@ namespace MiniC.Generators
         {
             var compareInstruction = new GeInstruction(r1, r2);
             var op = new CompareOperation(pRegister, compareInstruction);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
         
         public void AddCompareRegisterGtRegister(Register pRegister, Register r1, Register r2)
         {
             var compareInstruction = new GtInstruction(r1, r2);
             var op = new CompareOperation(pRegister, compareInstruction);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
         
         public void AddCompareRegisterLeRegister(Register pRegister, Register r1, Register r2)
@@ -861,7 +869,7 @@ namespace MiniC.Generators
             // LE делается через GE простым свапом параметров
             var compareInstruction = new LeInstruction(r1, r2);
             var op = new CompareOperation(pRegister, compareInstruction);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
         
         public void AddCompareRegisterLtRegister(Register pRegister, Register r1, Register r2)
@@ -869,7 +877,7 @@ namespace MiniC.Generators
             // LT делается через GT простым свапом параметров
             var compareInstruction = new LtInstruction(r1, r2);
             var op = new CompareOperation(pRegister, compareInstruction);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
         
         #endregion
@@ -878,21 +886,21 @@ namespace MiniC.Generators
         public void AddJump(string label)
         {
             var op = new JumpOperation(label);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
         
         public void AddConditionalJump(Register pRegister, string label, bool negate = false)
         {
             var jumpOperation = new JumpOperation(label);
             var op = new ConditionalOperation(pRegister, jumpOperation, negate);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
 
         public void AddCall(string funcName, bool addFuncPrefixSuffix = true)
         {
             string labelName = addFuncPrefixSuffix ? $"func_{funcName}_start" : funcName;
             var op = new JumpOperation(labelName, true);
-            addOperation(op);
+            addOperationToTextSection(op);
         }
         
         #endregion
@@ -905,7 +913,7 @@ namespace MiniC.Generators
 
         public void AddComment(string comment, bool withTab = true)
         {
-            _lastAddedOperation.SetUpperComment(comment, withTab);
+            _lastAddedOperation.SetLowerComment(comment, withTab);
         }
         
         #endregion
