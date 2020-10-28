@@ -4,13 +4,13 @@ using MiniC.Operations.Operands.Instructions;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class MemReadOperation: IOperation
+    public class MemReadOperation: BaseOperation
     {
-        protected RegisterOperand lhs;
-        protected MemInstruction rhs;
+        // protected RegisterOperand lhs;
+        // protected MemInstruction rhs;
 
-        public RegisterOperand LhsAsRegisterOperand => lhs;
-        public MemInstruction RhsAsMemInstruction => rhs;
+        public RegisterOperand LhsAsRegisterOperand => lhs as RegisterOperand;
+        public MemInstruction RhsAsMemInstruction => rhs as MemInstruction;
         
         public MemReadOperation(RegisterOperand lhs, MemInstruction rhs)
         {
@@ -23,11 +23,9 @@ namespace MiniC.Operations.ConcreteOperations
             lhs = new RegisterOperand(register);
             this.rhs = rhs;
         }
+        
+        public override OperationType OperationType => OperationType.LD;
 
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => rhs;
-        public OperationType OperationType => OperationType.LD;
-
-        public string AsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
+        public override string OperationAsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
     }
 }

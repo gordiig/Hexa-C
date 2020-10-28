@@ -5,13 +5,13 @@ using MiniC.Operations.Operands.Instructions.CompareInstructions;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class CompareOperation: IOperation
+    public class CompareOperation: BaseOperation
     {
-        protected RegisterOperand lhs;
-        protected CompareInstruction rhs;
+        // protected RegisterOperand lhs;
+        // protected CompareInstruction rhs;
 
-        public RegisterOperand LhsAsRegisterOperand => lhs;
-        public CompareInstruction RhsAsCompareOperation => rhs;
+        public RegisterOperand LhsAsRegisterOperand => lhs as RegisterOperand;
+        public CompareInstruction RhsAsCompareOperation => rhs as CompareInstruction;
 
         public CompareOperation(RegisterOperand lhs, CompareInstruction rhs)
         {
@@ -25,12 +25,11 @@ namespace MiniC.Operations.ConcreteOperations
             this.rhs = rhs;
         }
 
-        public OperationType OperationType => rhs.CompareInstructionType == ArithmeticInstructionType.Int
+        public override OperationType OperationType => 
+            RhsAsCompareOperation.CompareInstructionType == ArithmeticInstructionType.Int
             ? OperationType.ALU
-            : OperationType.XTYPE;  
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => rhs;
+            : OperationType.XTYPE;
 
-        public string AsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
+        public override string OperationAsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
     }
 }

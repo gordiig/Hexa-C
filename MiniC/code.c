@@ -1,6 +1,7 @@
 // int globalX = 3;
 
 int foo(int x) {
+    int b = 3;
     return 0;
 }
 

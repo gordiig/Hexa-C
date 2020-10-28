@@ -3,11 +3,15 @@ using MiniC.Operations.Operands;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class ConditionalOperation: IOperation
+    public class ConditionalOperation: BaseOperation
     {
         protected RegisterOperand pRegister;
         protected bool negate;
         protected IOperation innerOperation;
+
+        public RegisterOperand PRegister => pRegister;
+        public bool Negate => negate;
+        public IOperation InnerOperation => innerOperation;
 
         public ConditionalOperation(RegisterOperand pRegister, IOperation innerOperation, bool negate)
         {
@@ -23,10 +27,9 @@ namespace MiniC.Operations.ConcreteOperations
             this.innerOperation = innerOperation;
         }
 
-        public OperationType OperationType => innerOperation.OperationType;
-        public IOperand Lhs => innerOperation.Lhs;
-        public IOperand Rhs => innerOperation.Rhs;
+        public override OperationType OperationType => innerOperation.OperationType;
 
-        public string AsmString => $"if({(negate ? "!" : "")}{pRegister.AsmString}) {innerOperation.AsmString}";
+        public override string OperationAsmString => 
+            $"if({(negate ? "!" : "")}{pRegister.AsmString}) {innerOperation.AsmString}";
     }
 }

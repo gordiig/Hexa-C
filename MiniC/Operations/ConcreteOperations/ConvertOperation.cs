@@ -4,13 +4,13 @@ using MiniC.Operations.Operands.Instructions.ConvertInstructions;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class ConvertOperation: IOperation
+    public class ConvertOperation: BaseOperation
     {
-        protected RegisterOperand lhs;
-        protected ConvertInstruction rhs;
+        // protected RegisterOperand lhs;
+        // protected ConvertInstruction rhs;
 
-        public RegisterOperand LhsAsRegisterOperand => lhs;
-        public ConvertInstruction RhsAsConvertInstruction => rhs;
+        public RegisterOperand LhsAsRegisterOperand => lhs as RegisterOperand;
+        public ConvertInstruction RhsAsConvertInstruction => rhs as ConvertInstruction;
 
         public ConvertOperation(RegisterOperand lhs, ConvertInstruction rhs)
         {
@@ -24,10 +24,8 @@ namespace MiniC.Operations.ConcreteOperations
             this.rhs = rhs;
         }
         
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => rhs;
-        public OperationType OperationType => OperationType.XTYPE; // TODO
+        public override OperationType OperationType => OperationType.XTYPE; // TODO
 
-        public string AsmString => $"\t{Lhs.AsmString};";
+        public override string OperationAsmString => $"\t{Lhs.AsmString};";
     }
 }

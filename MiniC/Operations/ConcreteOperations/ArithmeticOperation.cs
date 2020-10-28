@@ -4,12 +4,11 @@ using MiniC.Operations.Operands.Instructions.ArithmeticInstructions;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class ArithmeticOperation: IOperation
+    public class ArithmeticOperation: BaseOperation
     {
-        protected IOperand lhs;
-        protected ArithmeticInstruction rhs;
+        // protected ArithmeticInstruction rhs;
 
-        public ArithmeticInstruction RhsAsArithmeticInstruction => rhs;
+        public ArithmeticInstruction RhsAsArithmeticInstruction => rhs as ArithmeticInstruction;
 
         public ArithmeticOperation(IOperand lhs, ArithmeticInstruction rhs)
         {
@@ -23,13 +22,11 @@ namespace MiniC.Operations.ConcreteOperations
             this.rhs = rhs;
         }
 
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => rhs;
-
-        public OperationType OperationType => rhs.ArithmeticInstructionType == ArithmeticInstructionType.Int
+        public override OperationType OperationType => 
+            RhsAsArithmeticInstruction.ArithmeticInstructionType == ArithmeticInstructionType.Int
             ? OperationType.ALU
             : OperationType.XTYPE;
 
-        public string AsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
+        public override string OperationAsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
     }
 }

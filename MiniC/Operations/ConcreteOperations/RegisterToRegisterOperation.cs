@@ -3,13 +3,13 @@ using MiniC.Operations.Operands;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class RegisterToRegisterOperation: IOperation
+    public class RegisterToRegisterOperation: BaseOperation
     {
-        protected RegisterOperand lhs;
-        protected RegisterOperand rhs;
+        // protected RegisterOperand lhs;
+        // protected RegisterOperand rhs;
 
-        public RegisterOperand LhsAsRegisterOperand => lhs;
-        public RegisterOperand RhsAsRegisterOperand => rhs;
+        public RegisterOperand LhsAsRegisterOperand => lhs as RegisterOperand;
+        public RegisterOperand RhsAsRegisterOperand => rhs as RegisterOperand;
 
         public RegisterToRegisterOperation(RegisterOperand lhs, RegisterOperand rhs)
         {
@@ -23,9 +23,7 @@ namespace MiniC.Operations.ConcreteOperations
             this.rhs = new RegisterOperand(rhs);
         }
 
-        public OperationType OperationType => OperationType.Assign;
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => rhs;
-        public string AsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
+        public override OperationType OperationType => OperationType.Assign;
+        public override string OperationAsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
     }
 }

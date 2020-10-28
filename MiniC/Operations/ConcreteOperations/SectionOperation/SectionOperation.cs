@@ -1,15 +1,12 @@
-using MiniC.Operations.Operands;
-
 namespace MiniC.Operations.ConcreteOperations.SectionOperation
 {
-    public abstract class SectionOperation: IOperation
+    public abstract class SectionOperation: BaseOperation
     {
-        public OperationType OperationType => OperationType.NonOp;
-        public IOperand Lhs => null;
-        public IOperand Rhs => null;
+        public override OperationType OperationType => OperationType.NonOp;
 
         public abstract SectionType SectionType { get; }
         
-        public string AsmString => $"\t.section\t.{(SectionType == SectionType.Data ? "data" : "text")}";
+        public override string OperationAsmString => 
+            $"\t.section\t.{(SectionType == SectionType.Data ? "data" : "text")}";
     }
 }

@@ -5,10 +5,13 @@ using MiniC.Scopes;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class GlobalVariableAddressToRegisterOperation: IOperation
+    public class GlobalVariableAddressToRegisterOperation: BaseOperation
     {
-        protected RegisterOperand lhs;
-        protected IntConstOperand rhs;
+        // protected RegisterOperand lhs;
+        // protected IntConstOperand rhs;
+        
+        public RegisterOperand LhsAsRegisterOperand => lhs as RegisterOperand;
+        public IntConstOperand RhsAsIntConstOperand => lhs as IntConstOperand;
 
         public GlobalVariableAddressToRegisterOperation(RegisterOperand lhs, IntConstOperand rhs)
         {
@@ -22,10 +25,8 @@ namespace MiniC.Operations.ConcreteOperations
             this.rhs = new IntConstOperand(rhs.BaseAddress);
         }
 
-        public OperationType OperationType => OperationType.Assign;
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => rhs;
+        public override OperationType OperationType => OperationType.Assign;
 
-        public string AsmString => $"{Lhs.AsmString} = ##{Rhs.AsmString}";
+        public override string OperationAsmString => $"{Lhs.AsmString} = ##{Rhs.AsmString}";
     }
 }

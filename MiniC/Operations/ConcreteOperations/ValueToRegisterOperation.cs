@@ -4,13 +4,13 @@ using MiniC.Operations.Operands.ConstOperands;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class ValueToRegisterOperation: IOperation
+    public class ValueToRegisterOperation: BaseOperation
     {
-        protected RegisterOperand lhs;
-        protected ConstOperand rhs;
+        // protected RegisterOperand lhs;
+        // protected ConstOperand rhs;
 
-        public RegisterOperand LhsAsRegisterOperand => lhs;
-        public ConstOperand RhsAsConstOperand => rhs;
+        public RegisterOperand LhsAsRegisterOperand => lhs as RegisterOperand;
+        public ConstOperand RhsAsConstOperand => rhs as ConstOperand;
 
         public ValueToRegisterOperation(RegisterOperand lhs, ConstOperand rhs)
         {
@@ -24,9 +24,7 @@ namespace MiniC.Operations.ConcreteOperations
             this.rhs = rhs;
         }
 
-        public OperationType OperationType => OperationType.Assign;
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => rhs;
-        public string AsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
+        public override OperationType OperationType => OperationType.Assign;
+        public override string OperationAsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
     }
 }

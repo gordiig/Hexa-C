@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -7,11 +6,11 @@ using System.Text;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using MiniC.Exceptions;
+using MiniC.Generators.RegisterGetters;
 using MiniC.Operations;
 using MiniC.Operations.ConcreteOperations;
 using MiniC.Operations.ConcreteOperations.AddGlobalSymbolOperations;
 using MiniC.Operations.ConcreteOperations.SectionOperation;
-using MiniC.Operations.Operands;
 using MiniC.Operations.Operands.ConstOperands;
 using MiniC.Operations.Operands.Instructions;
 using MiniC.Operations.Operands.Instructions.AllocInstructions;
@@ -24,9 +23,6 @@ namespace MiniC.Generators
 {
     public class AsmCodeWriter
     {
-        // private string _variables = "";
-        // private string _code = "";
-
         private ArrayList _variables = new ArrayList();
         private void addVariable(IOperation op)
         {
@@ -34,9 +30,11 @@ namespace MiniC.Generators
         }
         
         private ArrayList _operations = new ArrayList();
+        private IOperation _lastAddedOperation = null;
         private void addOperation(IOperation op)
         {
             _operations.Add(op);
+            _lastAddedOperation = op;
         }
 
         public ParseTreeProperty<SymbolType> Conversions;
@@ -53,12 +51,8 @@ namespace MiniC.Generators
             addVariable(new DataSectionOperation());
             addOperation(new TextSectionOperation());
             
-            AvaliableRegisters = new Register[29];
-            for (int i = 0; i < AvaliableRegisters.Length; i++)
-                AvaliableRegisters[i] = new Register($"r{i}");
-            AvaliablePredicateRegisters = new Register[4];
-            for (int i = 0; i < AvaliablePredicateRegisters.Length; i++)
-                AvaliablePredicateRegisters[i] = new Register($"p{i}");
+            AvaliableRegisters = new ConsistentRegisterGetter("r", 29);
+            AvaliablePredicateRegisters = new ConsistentRegisterGetter("p", 4);
         }
 
         #region Registers work
@@ -67,50 +61,34 @@ namespace MiniC.Generators
         public Register LastReferencedAddressRegister;
         public Stack<string> LoopStack = new Stack<string>();
         public Stack<string> IfStack = new Stack<string>();
-        public Register[] AvaliableRegisters;
-        public Register[] AvaliablePredicateRegisters;
+        public IRegisterGetter AvaliableRegisters;
+        public IRegisterGetter AvaliablePredicateRegisters;
 
         public Register GetFreeRegister(int startIdx = 0)
         {
-            for (int i = startIdx; i < AvaliableRegisters.Length; i++)
-            {
-                if (AvaliableRegisters[i].IsFree)
-                {
-                    AvaliableRegisters[i].IsFree = false;
-                    return AvaliableRegisters[i];
-                }
-            }
-            throw new ArgumentException("No free registers left");
+            return AvaliableRegisters.GetFreeRegister(startIdx);
         }
 
         public void FreeRegister(Register register)
         {
-            register.IsFree = true;
+            AvaliableRegisters.FreeRegister(register);
         }
 
         public void FreeLastReferencedAddressRegister()
         {
             if (LastReferencedAddressRegister != null)
-                LastReferencedAddressRegister.IsFree = true;
+                FreeRegister(LastReferencedAddressRegister);
             LastReferencedAddressRegister = null;
         }
 
         public Register GetFreePredicateRegister()
         {
-            for (int i = 0; i < AvaliablePredicateRegisters.Length; i++)
-            {
-                if (AvaliablePredicateRegisters[i].IsFree)
-                {
-                    AvaliablePredicateRegisters[i].IsFree = false;
-                    return AvaliablePredicateRegisters[i];
-                }
-            }
-            throw new ArgumentException("No free predicate registers left");
+            return AvaliablePredicateRegisters.GetFreeRegister();
         }
 
         public void FreePredicateRegister(Register pRegister)
         {
-            pRegister.IsFree = true;
+            AvaliablePredicateRegisters.FreeRegister(pRegister);
         }
         
         #endregion
@@ -379,7 +357,7 @@ namespace MiniC.Generators
 
         public void AddReturnValue(Register sourceRegister)
         {
-            AddRegisterToRegisterAssign(AvaliableRegisters[0], sourceRegister);
+            AddRegisterToRegisterAssign(AvaliableRegisters.Zero, sourceRegister);
         }
         
         #endregion
@@ -922,12 +900,12 @@ namespace MiniC.Generators
         #region Adding comments
         public void AddInlineComment(string comment)
         {
-            addOperation(new CommentOperation(comment));
+            _lastAddedOperation.InlineComment = comment;
         }
 
         public void AddComment(string comment, bool withTab = true)
         {
-            addOperation(new CommentOperation(comment, withTab));
+            _lastAddedOperation.SetUpperComment(comment, withTab);
         }
         
         #endregion

@@ -1,9 +1,8 @@
-using MiniC.Operations.Operands;
 using MiniC.Scopes;
 
 namespace MiniC.Operations.ConcreteOperations.AddGlobalSymbolOperations
 {
-    public abstract class AddGlobalSymbolOperation: IOperation
+    public abstract class AddGlobalSymbolOperation: BaseOperation
     {
         protected string name;
         protected SymbolType type;
@@ -17,10 +16,6 @@ namespace MiniC.Operations.ConcreteOperations.AddGlobalSymbolOperations
             this.type = type;
         }
 
-        public OperationType OperationType => OperationType.NonOp;
-        public IOperand Lhs => null;
-        public IOperand Rhs => null;
-        
-        public abstract string AsmString { get; }
+        public override OperationType OperationType => OperationType.NonOp;
     }
 }

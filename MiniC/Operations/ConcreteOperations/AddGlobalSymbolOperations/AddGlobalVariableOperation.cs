@@ -9,6 +9,6 @@ namespace MiniC.Operations.ConcreteOperations.AddGlobalSymbolOperations
         {
         }
 
-        public override string AsmString => $"{name}:\n\t.{type.Name}\t0";
+        public override string OperationAsmString => $"{name}:\n\t.{type.Name}\t0";
     }
 }

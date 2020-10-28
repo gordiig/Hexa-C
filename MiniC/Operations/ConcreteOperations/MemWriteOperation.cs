@@ -5,12 +5,12 @@ using MiniC.Operations.Operands.Instructions;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class MemWriteOperation: IOperation
+    public class MemWriteOperation: BaseOperation
     {
-        protected MemInstruction lhs;
-        protected IOperand rhs;
+        // protected MemInstruction lhs;
+        // protected IOperand rhs;
 
-        public MemInstruction LhsAsMemInstruction => lhs;
+        public MemInstruction LhsAsMemInstruction => lhs as MemInstruction;
 
         public MemWriteOperation(MemInstruction lhs, RegisterOperand rhs)
         {
@@ -35,11 +35,9 @@ namespace MiniC.Operations.ConcreteOperations
             this.lhs = lhs;
             rhs = new RegisterOperand(register);
         }
+        
+        public override OperationType OperationType => OperationType.ST;
 
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => rhs;
-        public OperationType OperationType => OperationType.ST;
-
-        public string AsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
+        public override string OperationAsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
     }
 }

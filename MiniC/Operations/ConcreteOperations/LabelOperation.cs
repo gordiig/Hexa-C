@@ -2,11 +2,11 @@ using MiniC.Operations.Operands;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class LabelOperation: IOperation
+    public class LabelOperation: BaseOperation
     {
-        protected LabelOperand lhs;
+        // protected LabelOperand lhs;
 
-        public LabelOperand LhsAsLabelOperand => lhs;
+        public LabelOperand LhsAsLabelOperand => lhs as LabelOperand;
 
         public LabelOperation(LabelOperand lhs)
         {
@@ -17,11 +17,9 @@ namespace MiniC.Operations.ConcreteOperations
         {
             lhs = new LabelOperand(label);
         }
+        
+        public override OperationType OperationType => OperationType.NonOp;
 
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => null;
-        public OperationType OperationType => OperationType.NonOp;
-
-        public string AsmString => $"{Lhs.AsmString}:";
+        public override string OperationAsmString => $"{Lhs.AsmString}:";
     }
 }

@@ -3,11 +3,11 @@ using MiniC.Operations.Operands.Instructions.JumpInstructions;
 
 namespace MiniC.Operations.ConcreteOperations
 {
-    public class JumpOperation: IOperation
+    public class JumpOperation: BaseOperation
     {
-        protected BaseJumpInstruction lhs;
+        // protected BaseJumpInstruction lhs;
 
-        public BaseJumpInstruction LhsBaseJumpInstruction => lhs;
+        public BaseJumpInstruction LhsBaseJumpInstruction => lhs as BaseJumpInstruction;
 
         public JumpOperation(BaseJumpInstruction lhs)
         {
@@ -23,11 +23,9 @@ namespace MiniC.Operations.ConcreteOperations
         {
             lhs = call ? (BaseJumpInstruction) new CallInstruction(label) : new JumpInstruction(label);
         }
+        
+        public override OperationType OperationType => OperationType.J;
 
-        public IOperand Lhs => lhs;
-        public IOperand Rhs => null;
-        public OperationType OperationType => OperationType.J;
-
-        public string AsmString => $"\t{Lhs.AsmString};";
+        public override string OperationAsmString => $"\t{Lhs.AsmString};";
     }
 }
