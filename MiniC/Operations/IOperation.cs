@@ -1,3 +1,4 @@
+using System.Collections;
 using MiniC.Operations.Operands;
 
 namespace MiniC.Operations
@@ -7,8 +8,8 @@ namespace MiniC.Operations
         OperationType OperationType { get; }
         IOperand Lhs { get; }
         IOperand Rhs { get; }
-        string LowerComment { get;}
-        void SetLowerComment(string comment, bool withTab);
+        ArrayList LowerComments { get;}
+        void AddLowerComment(string comment, bool withTab);
         string InlineComment { get; set; }
         string OperationAsmString { get; }
 

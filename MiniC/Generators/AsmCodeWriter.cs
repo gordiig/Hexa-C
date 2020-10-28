@@ -916,7 +916,7 @@ namespace MiniC.Generators
 
         public void AddComment(string comment, bool withTab = true)
         {
-            _lastAddedOperation.SetLowerComment(comment, withTab);
+            _lastAddedOperation.AddLowerComment(comment, withTab);
         }
         
         #endregion
