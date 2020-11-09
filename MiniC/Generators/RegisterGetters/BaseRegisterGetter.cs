@@ -28,6 +28,7 @@ namespace MiniC.Generators.RegisterGetters
 
         public virtual void FreeRegister(Register register)
         {
+            register.ClearOffsets();
             register.IsFree = true;
         }
     }

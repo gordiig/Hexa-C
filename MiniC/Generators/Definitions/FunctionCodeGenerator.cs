@@ -98,6 +98,8 @@ namespace MiniC.Generators.Definitions
                 var addressRegister = currentCode.GetFreeRegister();
                 currentCode.AddSubRegisterFromRegister(addressRegister, firstParamAddressRegister, 
                     subAddressRegister);
+                addressRegister.AddRangeOfOffsets(firstParamAddressRegister.Offsets);
+                addressRegister.AddOffset($"-{subValue}");
 
                 // Получаем значение
                 var valueRegister = currentCode.GetFreeRegister();

@@ -6,12 +6,12 @@ using System.Text;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using MiniC.Exceptions;
+using MiniC.Generators.ListingScopeTreeDir;
 using MiniC.Generators.RegisterGetters;
 using MiniC.Operations;
 using MiniC.Operations.ConcreteOperations;
 using MiniC.Operations.ConcreteOperations.AddGlobalSymbolOperations;
 using MiniC.Operations.ConcreteOperations.SectionOperation;
-using MiniC.Operations.Operands;
 using MiniC.Operations.Operands.ConstOperands;
 using MiniC.Operations.Operands.Instructions;
 using MiniC.Operations.Operands.Instructions.AllocInstructions;
@@ -25,8 +25,14 @@ namespace MiniC.Generators
     public class AsmCodeWriter
     {
         private ArrayList _dataSection = new ArrayList();
-        private ArrayList _textSection = new ArrayList();
+        private ListingScopeTree _textSection = new ListingScopeTree("Text section", ListingScopeType.All);
         private IOperation _lastAddedOperation = null;
+        
+        public Stack<string> LoopStack = new Stack<string>();
+        public Stack<string> IfStack = new Stack<string>();
+        private Stack<string> funcStack = new Stack<string>();
+        private Stack<ListingScopeTree> listingScopeStack = new Stack<ListingScopeTree>();
+        private ListingScopeTree currentListingScope;
 
         private void addOperationToDataSection(IOperation op)
         {
@@ -34,7 +40,7 @@ namespace MiniC.Generators
         }
         private void addOperationToTextSection(IOperation op)
         {
-            _textSection.Add(op);
+            currentListingScope.Add(op);
             _lastAddedOperation = op;
         }
 
@@ -48,6 +54,8 @@ namespace MiniC.Generators
             scopes = skopes;
             GlobalScope = globalScope;
             Conversions = conversions;
+
+            currentListingScope = _textSection;
             
             addOperationToDataSection(new DataSectionOperation());
             addOperationToTextSection(new TextSectionOperation());
@@ -68,8 +76,6 @@ namespace MiniC.Generators
         
         public Register LastAssignedRegister;
         public Register LastReferencedAddressRegister;
-        public Stack<string> LoopStack = new Stack<string>();
-        public Stack<string> IfStack = new Stack<string>();
         public IRegisterGetter AvaliableRegisters;
         public IRegisterGetter AvaliablePredicateRegisters;
 
@@ -103,8 +109,7 @@ namespace MiniC.Generators
         #endregion
 
         #region Functions and stack offset stack
-
-        private Stack<string> funcStack = new Stack<string>();
+        
         private Stack<int> variablesOffsetStack = new Stack<int>();
         public int FuncParametersOffsetFromStackHead = 0;
         public GlobalScope GlobalScope { get; }
@@ -112,11 +117,17 @@ namespace MiniC.Generators
         public void PushFunc(string funcName)
         {
             funcStack.Push(funcName);
+            listingScopeStack.Push(currentListingScope);
             variablesOffsetStack.Push(0);
+            currentListingScope = new ListingScopeTree(funcName, ListingScopeType.Func);
         }
 
         public (string, int) PopFunc()
         {
+            var lastListingScope = listingScopeStack.Pop();
+            lastListingScope.Add(currentListingScope);
+            currentListingScope = lastListingScope;
+            
             var poppedFunc = funcStack.Pop();
             var poppedOffset = variablesOffsetStack.Pop();
             return (poppedFunc, poppedOffset);
@@ -165,6 +176,40 @@ namespace MiniC.Generators
             return scopesStack.Peek();
         }
 
+        public void PushLoop(string loopName)
+        {
+            listingScopeStack.Push(currentListingScope);
+            currentListingScope = new ListingScopeTree(loopName, ListingScopeType.Loop);
+            
+            LoopStack.Push(loopName);
+        }
+
+        public string PopLoop()
+        {
+            var tmpScope = listingScopeStack.Pop();
+            tmpScope.Add(currentListingScope);
+            currentListingScope = tmpScope;
+
+            return LoopStack.Pop();
+        }
+
+        public void PushIf(string ifName)
+        {
+            listingScopeStack.Push(currentListingScope);
+            currentListingScope = new ListingScopeTree(ifName, ListingScopeType.If);
+            
+            IfStack.Push(ifName);
+        }
+
+        public string PopIf()
+        {
+            var tmpScope = listingScopeStack.Pop();
+            tmpScope.Add(currentListingScope);
+            currentListingScope = tmpScope;
+
+            return IfStack.Pop();
+        }
+        
         #endregion
 
         #region Getting code
@@ -175,8 +220,7 @@ namespace MiniC.Generators
             foreach (IOperation variable in _dataSection)
                 stringBuilder.AppendLine(variable.AsmString);
             stringBuilder.Append('\n');
-            foreach (IOperation operation in _textSection)
-                stringBuilder.AppendLine(operation.AsmString);
+            stringBuilder.Append(_textSection.AsmString);
             return stringBuilder.ToString();
         }
         
@@ -280,6 +324,7 @@ namespace MiniC.Generators
                     // Добавляем указатель на нулевой элемент (костыли ура вот указатели не делали теперь хлебаем)
                     var pointerRegister = GetFreeRegister();
                     AddAddingValueToRegister(pointerRegister, Register.SP(), currentOffset + 4);
+                    pointerRegister.AddOffset((currentOffset + 4).ToString());
                     // _code += $"\n\tmemw(SP + #{currentOffset}) = {pointerRegister};";
                     AddRegisterToMemWriting(Register.SP(), pointerRegister, 
                         currentOffset.ToString());
@@ -310,6 +355,7 @@ namespace MiniC.Generators
                     // Добавляем указатель на нулевой элемент (костыли ура вот указатели не делали теперь хлебаем)
                     var pointerRegister = GetFreeRegister();
                     AddAddingValueToRegister(pointerRegister, Register.SP(), currentOffset + 4);
+                    pointerRegister.AddOffset((currentOffset + 4).ToString());
                     // _code += $"\n\tmemw(SP + #{currentOffset}) = {pointerRegister};";
                     AddRegisterToMemWriting(Register.SP(), pointerRegister, 
                         currentOffset.ToString());
@@ -399,14 +445,14 @@ namespace MiniC.Generators
         {
             var label = $"loop_{name}_start";
             AddLabel(label);
-            LoopStack.Push(name);
+            PushLoop($"loop_{name}");
         }
 
         public void AddLoopEnd(string name)
         {
             var label = $"loop_{name}_end";
             AddLabel(label);
-            LoopStack.Pop();
+            PopLoop();
         }
 
         public void AddContinue(string loopName)
@@ -440,14 +486,14 @@ namespace MiniC.Generators
         {
             var label = $"if_{name}_start";
             AddLabel(label);
-            IfStack.Push(name);
+            PushIf($"if_{name}");
         }
 
         public void AddIfEnd(string name)
         {
             var label = $"if_{name}_end";
             AddLabel(label);
-            IfStack.Pop();
+            PopIf();
         }
 
         public void AddIfElse(string ifName)
@@ -488,7 +534,8 @@ namespace MiniC.Generators
         {
             var memRegister = GetFreeRegister();
             AddVariableAddressToRegisterReading(variable, memRegister);
-            FreeLastReferencedAddressRegister();
+            // Пока в этой функции 1 юсадж (в вариабл дефинишн, то читить этот регистр не надо, иначе оффсеты обнуляются у memRegiser
+            // FreeLastReferencedAddressRegister();
             var memInstr = new MemInstruction(memRegister);
             var op = new MemWriteOperation(memInstr, register);
             addOperationToTextSection(op);
@@ -500,6 +547,7 @@ namespace MiniC.Generators
         {
             register.Type = variable.Type;
             IOperation op;
+            register.AddOffset(variable.BaseAddress);
             if (variable.IsGlobal)
             {
                 // _code += $"\n\t{register} = ##{variable.BaseAddress};";
@@ -519,6 +567,8 @@ namespace MiniC.Generators
         public void AddRegisterToVariableWritingWithOffset(VarSymbol variable, Register register, string offset)
         {
             var memRegister = GetFreeRegister();
+            memRegister.AddOffset(variable.BaseAddress);
+            // memRegister.AddOffset(offset);
             if (variable.IsGlobal)
             {
                 // _code += $"\n\t{memRegister} = ##{variable.BaseAddress};";
@@ -543,6 +593,8 @@ namespace MiniC.Generators
         public void AddMemToRegisterReading(Register addressRegister, SymbolType type, Register destRegister, string offsetValue = "")
         {
             destRegister.Type = type;
+            // destRegister.AddRangeOfOffsets(addressRegister.Offsets);
+            // destRegister.AddOffset(offsetValue);
             var memInstr = new MemInstruction(addressRegister, offsetValue);
             var op = new MemReadOperation(destRegister, memInstr);
             addOperationToTextSection(op);
