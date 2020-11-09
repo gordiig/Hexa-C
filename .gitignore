@@ -132,5 +132,7 @@ $RECYCLE.BIN/
 .DS_Store
 
 *.idea/
+code.c
+generated.S
 
 _NCrunch*

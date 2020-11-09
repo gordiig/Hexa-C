@@ -18,7 +18,7 @@ namespace MiniC
             // Order matters
             SymbolType.AddTypeRange("void", "char", "int", "float");
             
-            string filename = "../../../code.txt";
+            string filename = "../../../code.c";
 
             using (StreamReader file = new StreamReader(filename))
             {

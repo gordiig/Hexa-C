@@ -41,10 +41,8 @@ namespace MiniC.Generators.Expressions.BinaryOperators
             }
             // Equality expr only
             else
-            {
                 currentCode = equalityGenerator.GenerateCodeForContext(equalityExpression, currentCode);
-            }
-            
+
             return currentCode;
         }
     }
