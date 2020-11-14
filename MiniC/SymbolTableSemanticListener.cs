@@ -1007,7 +1007,7 @@ namespace MiniC
             try
             {
                 var a = new CompilationUnitCodeGenerator();
-                var text = new AsmCodeWriter(Scopes, global, Conversion, false);
+                var text = new AsmCodeWriter(Scopes, global, Conversion, true);
                 text = a.GenerateCodeForContext(context, text);
                 Console.WriteLine(text.GetCode());
                 text.WriteToFile();

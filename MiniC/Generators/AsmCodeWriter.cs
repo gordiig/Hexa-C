@@ -565,9 +565,10 @@ namespace MiniC.Generators
         public void AddRegisterToVariableWriting(VarSymbol variable, Register register)
         {
             var memRegister = GetFreeRegister();
+            // Запоминаем текущий LastReferencedRegister, так как AddVariableAddressToRegisterReading его перезапишет
+            var prevLastReferencedAddressRegister = LastReferencedAddressRegister;
             AddVariableAddressToRegisterReading(variable, memRegister);
-            // Пока в этой функции 1 юсадж (в вариабл дефинишн, то читить этот регистр не надо, иначе оффсеты обнуляются у memRegiser
-            // FreeLastReferencedAddressRegister();
+            LastReferencedAddressRegister = prevLastReferencedAddressRegister;
             var memInstr = new MemInstruction(memRegister);
             var op = new MemWriteOperation(memInstr, register);
             addOperationToTextSection(op);
@@ -581,10 +582,8 @@ namespace MiniC.Generators
             IOperation op;
             register.AddOffset(variable.BaseAddress);
             if (variable.IsGlobal)
-            {
                 // _code += $"\n\t{register} = ##{variable.BaseAddress};";
                 op = new GlobalVariableAddressToRegisterOperation(register, variable);
-            }
             else
             {
                 // _code += $"\n\t{register} = add(SP, #{variable.BaseAddress})";
@@ -1000,7 +999,7 @@ namespace MiniC.Generators
 
         public void AddComment(string comment, bool withTab = true)
         {
-            _lastAddedOperation.AddLowerComment(comment, withTab);
+            // _lastAddedOperation.AddLowerComment(comment, withTab);
         }
         
         #endregion

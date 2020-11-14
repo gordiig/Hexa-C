@@ -134,5 +134,6 @@ $RECYCLE.BIN/
 *.idea/
 code.c
 generated.S
+optimized.S
 
 _NCrunch*
