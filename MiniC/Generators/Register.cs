@@ -6,7 +6,7 @@ namespace MiniC.Generators
 {
     public class Register
     {
-        public string Name;
+        public readonly string Name;
         public bool IsFree = true;
         public SymbolType Type = SymbolType.GetType("int");
         // Если в регистре хранится адрес, то храним его смещение
@@ -22,6 +22,18 @@ namespace MiniC.Generators
         public override string ToString()
         {
             return Name;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is Register register)
+                return register.Name == Name;
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode();
         }
 
         public static Register SP()

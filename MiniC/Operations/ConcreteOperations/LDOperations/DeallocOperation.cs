@@ -1,19 +1,15 @@
 using MiniC.Operations.Operands.Instructions.AllocInstructions;
 
-namespace MiniC.Operations.ConcreteOperations
+namespace MiniC.Operations.ConcreteOperations.LDOperations
 {
-    public class DeallocOperation: BaseOperation
+    public class DeallocOperation: LDOperation
     {
-        // protected DeallocInstruction lhs;
-
         public DeallocInstruction LhsAsDeallocOperation => lhs as DeallocInstruction;
 
         public DeallocOperation(DeallocInstruction lhs)
         {
             this.lhs = lhs;
         }
-        
-        public override OperationType OperationType => OperationType.LD;
 
         public override string OperationAsmString => $"\t{Lhs.AsmString};";
     }

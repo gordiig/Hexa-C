@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Text;
 using MiniC.Exceptions;
 using MiniC.Generators;
+using MiniC.Generators.CodeOptimizers;
 using MiniC.Scopes;
 using static MiniC.MiniCParser;
 
@@ -1006,10 +1007,11 @@ namespace MiniC
             try
             {
                 var a = new CompilationUnitCodeGenerator();
-                var text = new AsmCodeWriter(Scopes, global, Conversion);
+                var text = new AsmCodeWriter(Scopes, global, Conversion, false);
                 text = a.GenerateCodeForContext(context, text);
                 Console.WriteLine(text.GetCode());
                 text.WriteToFile();
+                text.WriteToFile(new FunctionCodeOptimizer());
             }
             catch (CodeGenerationException e)
             {

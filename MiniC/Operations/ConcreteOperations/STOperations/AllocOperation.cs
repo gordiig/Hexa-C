@@ -1,12 +1,10 @@
 using MiniC.Operations.Operands.ConstOperands;
 using MiniC.Operations.Operands.Instructions.AllocInstructions;
 
-namespace MiniC.Operations.ConcreteOperations
+namespace MiniC.Operations.ConcreteOperations.STOperations
 {
-    public class AllocOperation: BaseOperation
+    public class AllocOperation: STOperation
     {
-        // protected AllocframeInstruction lhs;
-
         public AllocframeInstruction LhsAsAllocframeInstruction => lhs as AllocframeInstruction;
 
         public AllocOperation(AllocframeInstruction lhs)
@@ -23,8 +21,6 @@ namespace MiniC.Operations.ConcreteOperations
         {
             lhs = new AllocframeInstruction(size);
         }
-        
-        public override OperationType OperationType => OperationType.ST;
 
         public override string OperationAsmString => $"\t{Lhs.AsmString};";
     }

@@ -6,6 +6,13 @@ namespace MiniC.Operations.Operands.Instructions.ConvertInstructions
     {
         protected RegisterOperand reg;
 
+        public RegisterOperand FirstOperandAsRegisterOperand => reg;
+        public bool NeedsNew
+        {
+            get => reg.NeedsNew;
+            set => reg.NeedsNew = value;
+        }
+
         public ConvertInstruction(RegisterOperand reg)
         {
             this.reg = reg;

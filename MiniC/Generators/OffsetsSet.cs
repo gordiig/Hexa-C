@@ -35,15 +35,18 @@ namespace MiniC.Generators
 
         public void Add(string offset)
         {
+            if (offset == "0" && offsets.Contains(offset))
+                return;
             offsets.Add(offset);
         }
         public void AddRange(IEnumerable<string> offsets)
         {
-            this.offsets.AddRange(offsets);
+            foreach (var offset in offsets)
+                Add(offset);
         }
         public void AddRange(OffsetsSet offsets)
         {
-            this.offsets.AddRange(offsets.offsets);
+            AddRange(offsets.offsets);
         }
         
         public void Remove(string offset)
@@ -87,6 +90,11 @@ namespace MiniC.Generators
             }
 
             return set.Count == 0;
+        }
+
+        public override int GetHashCode()
+        {
+            return offsets.Sum(offset => offset.GetHashCode());
         }
     }
 }

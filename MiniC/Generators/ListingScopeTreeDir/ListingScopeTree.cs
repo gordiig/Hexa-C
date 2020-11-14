@@ -11,12 +11,13 @@ namespace MiniC.Generators.ListingScopeTreeDir
     public class ListingScopeTree: IAsmWritable, IOptimizable
     {
         // Only IOperation or ListingScopeTree (meaning all entries are IAsmWritable)
-        private ArrayList scopeEntries;
-        private string name;
-        private ListingScopeType scopeType;
+        protected ArrayList scopeEntries;
+        protected string name;
+        protected ListingScopeType scopeType;
 
         public string Name => name;
         public ListingScopeType ScopeType => scopeType;
+        public ArrayList ScopeEntries => scopeEntries;
 
         public ListingScopeTree(string name, ListingScopeType type)
         {
@@ -72,7 +73,7 @@ namespace MiniC.Generators.ListingScopeTreeDir
             return new List<ListingScopeTree>(query);
         }
         
-        public string AsmString
+        public virtual string AsmString
         {
             get
             {

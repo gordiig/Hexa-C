@@ -5,6 +5,7 @@ namespace MiniC.Generators.ListingScopeTreeDir
         Func,
         Loop,
         If,
+        ConcurrentBlock,
         All,
     }
 }

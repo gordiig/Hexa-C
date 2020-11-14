@@ -2,13 +2,10 @@ using MiniC.Generators;
 using MiniC.Operations.Operands;
 using MiniC.Operations.Operands.Instructions;
 
-namespace MiniC.Operations.ConcreteOperations
+namespace MiniC.Operations.ConcreteOperations.LDOperations
 {
-    public class MemReadOperation: BaseOperation
+    public class MemReadOperation: LDOperation
     {
-        // protected RegisterOperand lhs;
-        // protected MemInstruction rhs;
-
         public RegisterOperand LhsAsRegisterOperand => lhs as RegisterOperand;
         public MemInstruction RhsAsMemInstruction => rhs as MemInstruction;
         
@@ -23,8 +20,6 @@ namespace MiniC.Operations.ConcreteOperations
             lhs = new RegisterOperand(register);
             this.rhs = rhs;
         }
-        
-        public override OperationType OperationType => OperationType.LD;
 
         public override string OperationAsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
     }

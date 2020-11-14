@@ -33,6 +33,17 @@ namespace MiniC.Operations.Operands.Instructions
 
         #endregion
 
+        public OffsetsSet OffsetsSet
+        {
+            get
+            {
+                var ans = new OffsetsSet(address.Register.Offsets);
+                if (offset != null)
+                    ans.Add(offset.IntRepr.ToString());
+                return ans;
+            }
+        }
+
         #region Interface impl
 
         public IOperand FirstOperand => address;

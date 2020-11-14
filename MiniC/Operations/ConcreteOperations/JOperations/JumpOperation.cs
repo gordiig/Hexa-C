@@ -1,14 +1,10 @@
 using MiniC.Operations.Operands;
 using MiniC.Operations.Operands.Instructions.JumpInstructions;
 
-namespace MiniC.Operations.ConcreteOperations
+namespace MiniC.Operations.ConcreteOperations.JOperations
 {
-    public class JumpOperation: BaseOperation
+    public class JumpOperation: JOperation
     {
-        // protected BaseJumpInstruction lhs;
-
-        public BaseJumpInstruction LhsBaseJumpInstruction => lhs as BaseJumpInstruction;
-
         public JumpOperation(BaseJumpInstruction lhs)
         {
             this.lhs = lhs;
@@ -23,8 +19,6 @@ namespace MiniC.Operations.ConcreteOperations
         {
             lhs = call ? (BaseJumpInstruction) new CallInstruction(label) : new JumpInstruction(label);
         }
-        
-        public override OperationType OperationType => OperationType.J;
 
         public override string OperationAsmString => $"\t{Lhs.AsmString};";
     }

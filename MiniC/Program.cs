@@ -60,7 +60,6 @@ namespace MiniC
             }
 
             Console.WriteLine("All ok!");
-            Console.ReadKey();
         }
     }
 }

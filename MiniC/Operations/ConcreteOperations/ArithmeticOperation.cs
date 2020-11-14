@@ -8,14 +8,9 @@ namespace MiniC.Operations.ConcreteOperations
     {
         // protected ArithmeticInstruction rhs;
 
+        public RegisterOperand LhsAsRegisterOperand => lhs as RegisterOperand;
         public ArithmeticInstruction RhsAsArithmeticInstruction => rhs as ArithmeticInstruction;
 
-        public ArithmeticOperation(IOperand lhs, ArithmeticInstruction rhs)
-        {
-            this.lhs = lhs;
-            this.rhs = rhs;
-        }
-        
         public ArithmeticOperation(Register lhs, ArithmeticInstruction rhs)
         {
             this.lhs = new RegisterOperand(lhs);

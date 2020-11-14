@@ -3,13 +3,10 @@ using MiniC.Operations.Operands;
 using MiniC.Operations.Operands.ConstOperands;
 using MiniC.Operations.Operands.Instructions;
 
-namespace MiniC.Operations.ConcreteOperations
+namespace MiniC.Operations.ConcreteOperations.STOperations
 {
-    public class MemWriteOperation: BaseOperation
+    public class MemWriteOperation: STOperation
     {
-        // protected MemInstruction lhs;
-        // protected IOperand rhs;
-
         public MemInstruction LhsAsMemInstruction => lhs as MemInstruction;
 
         public MemWriteOperation(MemInstruction lhs, RegisterOperand rhs)
@@ -35,8 +32,6 @@ namespace MiniC.Operations.ConcreteOperations
             this.lhs = lhs;
             rhs = new RegisterOperand(register);
         }
-        
-        public override OperationType OperationType => OperationType.ST;
 
         public override string OperationAsmString => $"\t{Lhs.AsmString} = {Rhs.AsmString};";
     }

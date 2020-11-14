@@ -6,12 +6,17 @@ using System.Text;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using MiniC.Exceptions;
+using MiniC.Generators.CodeOptimizers;
 using MiniC.Generators.ListingScopeTreeDir;
 using MiniC.Generators.RegisterGetters;
 using MiniC.Operations;
 using MiniC.Operations.ConcreteOperations;
 using MiniC.Operations.ConcreteOperations.AddGlobalSymbolOperations;
+using MiniC.Operations.ConcreteOperations.AssignOperations;
+using MiniC.Operations.ConcreteOperations.JOperations;
+using MiniC.Operations.ConcreteOperations.LDOperations;
 using MiniC.Operations.ConcreteOperations.SectionOperation;
+using MiniC.Operations.ConcreteOperations.STOperations;
 using MiniC.Operations.Operands.ConstOperands;
 using MiniC.Operations.Operands.Instructions;
 using MiniC.Operations.Operands.Instructions.AllocInstructions;
@@ -38,8 +43,12 @@ namespace MiniC.Generators
         {
             _dataSection.Add(op);
         }
+
+        private long lineCnt = 0;
         private void addOperationToTextSection(IOperation op)
         {
+            if (_lastAddedOperation != null)
+                _lastAddedOperation.InlineComment = (++lineCnt).ToString();
             currentListingScope.Add(op);
             _lastAddedOperation = op;
         }
@@ -214,22 +223,45 @@ namespace MiniC.Generators
 
         #region Getting code
 
+        private void GetCommonCode(StringBuilder sb)
+        {
+            foreach (IOperation variable in _dataSection)
+                sb.AppendLine(variable.AsmString);
+            sb.Append('\n');
+        }
+        
         public string GetCode()
         {
             var stringBuilder = new StringBuilder();
-            foreach (IOperation variable in _dataSection)
-                stringBuilder.AppendLine(variable.AsmString);
-            stringBuilder.Append('\n');
+            GetCommonCode(stringBuilder);
             stringBuilder.Append(_textSection.AsmString);
             return stringBuilder.ToString();
+        }
+
+        public string GetCode(ICodeOptimizer optimizer)
+        {
+            var stringBuilder = new StringBuilder();
+            GetCommonCode(stringBuilder);
+            var optimizedTextSection = _textSection.Optimize(optimizer);
+            stringBuilder.Append(optimizedTextSection.AsmString);
+            return stringBuilder.ToString();
+        }
+
+        private void CommonWriteToFile(string filename, string text)
+        {
+            using var writer = new StreamWriter(File.Open(filename, FileMode.Create));
+            writer.AutoFlush = true;
+            writer.Write(text);
         }
         
         public void WriteToFile(string filename = "../../../generated.S")
         {
-            using var writer = new StreamWriter(File.Open(filename, FileMode.Create));
-            writer.AutoFlush = true;
-            // writer.Write(AllCode);
-            writer.Write(GetCode());
+            CommonWriteToFile(filename, GetCode());
+        }
+
+        public void WriteToFile(ICodeOptimizer optimizer, string filename = "../../../optimized.S")
+        {
+            CommonWriteToFile(filename, GetCode(optimizer));
         }
 
         #endregion

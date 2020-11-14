@@ -24,7 +24,7 @@ namespace MiniC.Operations.ConcreteOperations
             this.rhs = rhs;
         }
         
-        public override OperationType OperationType => OperationType.XTYPE; // TODO
+        public override OperationType OperationType => OperationType.XTYPE;
 
         public override string OperationAsmString => $"\t{Lhs.AsmString};";
     }
